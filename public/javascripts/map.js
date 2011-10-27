@@ -6,20 +6,146 @@
 var googlelayer, map, normalproj, mercator, node_layer, edge_layer, myredraw, selectControlNodes, dir_layer, selectedFeatures, updatetimer, hoverControlNodes, timeOut, currentpopup, ismin;
 
 //var now;
-var layerswitcher;
+var layerswitcher, layers, activeControl, activeDrawLayer, activePopup, tempFeature;
+var handlerArray = {};
 
 var onscreenfeatures = [];
 
 
 
+/***************TO DO LIST
+1. 
 
 
 
 
 
 
+*/
 
 //******************************End layer class*********************************************************
+//*****************************OL override functions ************************************************
+
+OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
+   //if the state hasn't changed since last redraw, no need 
+        // to do anything. Just return the existing div.
+        if (!this.checkRedraw()) { 
+            return this.div; 
+        } 
+
+        //clear out previous layers 
+        this.clearLayersArray("base");
+        this.clearLayersArray("data");
+        
+        var containsOverlays = false;
+        var containsBaseLayers = false;
+        
+        // Save state -- for checking layer if the map state changed.
+        // We save this before redrawing, because in the process of redrawing
+        // we will trigger more visibility changes, and we want to not redraw
+        // and enter an infinite loop.
+        var len = this.map.layers.length;
+        this.layerStates = new Array(len);
+        for (var i=0; i <len; i++) {
+            var layer = this.map.layers[i];
+            this.layerStates[i] = {
+                'name': layer.name, 
+                'visibility': layer.visibility,
+                'inRange': layer.inRange,
+                'id': layer.id
+            };
+        }    
+
+        var layers = this.map.layers.slice();
+        if (!this.ascending) { layers.reverse(); }
+        for(var i=0, len=layers.length; i<len; i++) {
+            var layer = layers[i];
+            var baseLayer = layer.isBaseLayer;
+
+            if (layer.displayInLayerSwitcher) {
+
+                if (baseLayer) {
+                    containsBaseLayers = true;
+                } else {
+                    containsOverlays = true;
+                }    
+
+                // only check a baselayer if it is *the* baselayer, check data
+                //  layers if they are visible
+                var checked = (baseLayer) ? (layer == this.map.baseLayer)
+                                          : layer.getVisibility();
+    
+                // create input element
+                var inputElem = document.createElement("input");
+                inputElem.id = this.id + "_input_" + layer.name;
+                inputElem.name = (baseLayer) ? this.id + "_baseLayers" : layer.name;
+                inputElem.type = (baseLayer) ? "radio" : "checkbox";
+                inputElem.value = layer.name;
+                inputElem.checked = checked;
+                inputElem.defaultChecked = checked;
+
+                if (!baseLayer && !layer.inRange) {
+                    inputElem.disabled = true;
+                }
+                var context = {
+                    'inputElem': inputElem,
+                    'layer': layer,
+                    'layerSwitcher': this
+                };
+                OpenLayers.Event.observe(inputElem, "mouseup", 
+                    OpenLayers.Function.bindAsEventListener(this.onInputClick,
+                                                            context)
+                );
+                
+                // create span
+                var labelSpan = document.createElement("span");
+                OpenLayers.Element.addClass(labelSpan, "labelSpan");
+                if (!baseLayer && !layer.inRange) {
+                    labelSpan.style.color = "gray";
+                }
+                labelSpan.innerHTML = layer.name;
+                labelSpan.style.verticalAlign = (baseLayer) ? "bottom" 
+                                                            : "baseline";
+                OpenLayers.Event.observe(labelSpan, "click", 
+                    OpenLayers.Function.bindAsEventListener(this.onInputClick,
+                                                            context)
+                );
+                // create line break
+                var br = document.createElement("br");
+    
+                
+                var groupArray = (baseLayer) ? this.baseLayers
+                                             : this.dataLayers;
+                groupArray.push({
+                    'layer': layer,
+                    'inputElem': inputElem,
+                    'labelSpan': labelSpan
+                });
+                                                     
+    
+                var groupDiv = (baseLayer) ? this.baseLayersDiv
+                                           : this.dataLayersDiv;
+                groupDiv.appendChild(inputElem);
+                groupDiv.appendChild(labelSpan);
+                groupDiv.appendChild(br);
+            }
+        }
+
+        // if no overlays, dont display the overlay label
+        this.dataLbl.style.display = (containsOverlays) ? "" : "none";        
+        
+        // if no baselayers, dont display the baselayer label
+        this.baseLbl.style.display = (containsBaseLayers) ? "" : "none";        
+
+	appendLayerMenu();
+        return this.div;
+
+
+}
+
+
+
+
 
 //********************************Now functions ****************************************************
 
@@ -137,59 +263,6 @@ var onscreenfeatures = [];
     
 
 
-function originalscreen(){
-
-    $('#layerSelect').removeClass('infopanelmax');
-    $('#toolbarcontents').removeClass("toolbarmax"); 
-    $('#map').addClass('minscreenmap');
-    $('#map').removeClass('fullscreenmap');
-    //$('#movemenu').unbind('drag').addClass('hide');
-    $('#originalscreen').unbind('click'); 
-    $('#originalscreen').addClass('hide');
-
-    map.updateSize();
-
-    return;
-}    
-    
-    
-function gofullscreen(){
-
-
-    $('#layerSelect').addClass('infopanelmax');
-    //$("#content-inner-inner").css({ 'position': 'absolute'});;
-    /*
-    $('#layerSelect').bind('drag',function( event ){
-                $( '#layerSelect' ).css({
-                        top: event.offsetY,
-                        left: event.offsetX
-                        });
-                });
-*/
-
-
-    $('#map').removeClass('minscreenmap');
-    $('#map').addClass('fullscreenmap');
-    //.append($('#menudiv'))
-   
-    $('#originalscreen').click(function(event){event.stopPropagation();originalscreen();});
-    $('#toolbarcontents').addClass("toolbarmax"); 
-
-    external_panel = new OpenLayers.Control.Panel({
-                    div: $('#layerSelect') });
-    
-    //$('#movemenu').removeClass('hide');
-
-    //$('<div class="infopanelmax">return to original screen</div>').click(function(event){originalscreen();});
-    $('#originalscreen').removeClass('hide');
-    map.pan(0,0);
-    map.updateSize();
-    //map.addControl(external_panel);
-
-
-}
-
-
 
 
 
@@ -287,24 +360,6 @@ function gofullscreen(){
 
 
 
-
-
-
-//*******************************Loading Functions**************************************************************
-
-
-
-var startLoad = function(){
-	Popups.addLoading();
-
-
-	return;
-}
-
-var stopLoad = function() {
-    Popups.removeLoading();
-	return;
-}
 
 
 
@@ -485,54 +540,338 @@ var updatetoolbar = function(){
             });
         }
         
- 
-    
     }
-    
-
-    
-    
-
-    
-
 
 }
 
 
 
-var maximizeToolbar = function(){
-    ismin = false;
-    $("#toolbarcontents").html('<span id="toolbarmin" style="float:right;"><img src="/sites/all/modules/businessclustermap/image/layer-switcher-minimize.png" style="width:18px;height:18px"></span>');
-    $("#toolbarmin").click(function(){minimizeToolbar();});
-    $("#toolbarcontents").addClass("toolbarmax");
-    updatetoolbar();
-    return;    
-}
 
-
-var minimizeToolbar = function(){
-    ismin = true;
-    $("#toolbarcontents").html('<span id="toolbarmax" style="float:right;"><img src="/sites/all/modules/businessclustermap/image/layer-switcher-maximize.png" style="width:18px;height:18px"></span><span class="toolbarmenu buscasetag">Map Menu</span>');
-    $("#toolbarmax").click(function(){maximizeToolbar();});
-    return;
-
-}
                    
 
 
-var finishDrawPoint = function(feature){
-  console.log("featured added" + feature.geometry.x);
-  now.distributeMessage("Here is the message that I sent from clientside");
+var clearActiveControls = function(){
+
+
+	if (activeControl != null){	
+		if (activeDrawLayer != null){
+			
+			$.each(activeDrawLayer.features, function(index, value){
+					if ($.isFunction(activeControl.unhighlight)){activeControl.unhighlight(value);}
+					if ($.isFunction(activeControl.unselect)){activeControl.unselect(value);}
+			});
+
+			
+			$.each(activeDrawLayer.events.listeners, function(key, value) {
+				if ((key == "beforefeaturemodified" && value != "") || (key == "featuremodified" && value != "") || (key == "afterfeaturemodified" && value != "")){
+					//alert("removing " + key);
+					activeDrawLayer.events.remove(key);
+				}
+			});
+			
+
+			//activeDrawLayer = null;
+		
+		}
+		
+		
+		//alert($.param(activeDrawLayer.events.listeners));
+
+		  	activeControl.deactivate(); 
+		  	map.removeControl(activeControl);
+  			activeControl.destroy(); 
+			activeControl = null;
+	}
+	return;
+}
+
+now.clientAddFeature = function(thejson){
+console.log("here is the feature that was recieved : " + thejson);
+  var thefeature = new OpenLayers.Format.GeoJSON().read(thejson, "Feature");
+  
+  //var jsonobj = $.parseJSON(thejson);
+  //console.log(jsonobj['layer']);
+  //var thefeatures = new OpenLayers.Format.WKT().read(jsonobj['feature']);
+  console.log(thefeature.attributes['layer']);
+  map.getLayer(thefeature.attributes['layer']).addFeatures(thefeature);
+  return;
+
+
+}
+
+
+var closedPopup = function() {
+  $("#attributeForm").validationEngine('hideAll');
+  map.removePopup(activePopup);
+  tempFeature.layer.removeFeatures([tempFeature]);
+  tempFeature = null;
   return;
 
 }
 
 
+now.clientGetAttributeForm = function(formobj){
+  console.log(formobj);
+  var temppoint = tempFeature.geometry.getCentroid();
+  var lonlat = new OpenLayers.LonLat(temppoint.x, temppoint.y);
+  activePopup = new OpenLayers.Popup.AnchoredBubble(
+    "chicken",
+    lonlat, 
+    null,
+    formobj,
+    null,
+    true,
+    closedPopup
+  );
+  console.log("now opening the popup");
+  activePopup.autoSize = true;
+  activePopup.closeOnMove = false;
+  map.addPopup(activePopup);
+  
+  $("#attributeForm").submit(function(){
+    if ($(this).validationEngine("validate") == false){
+      return false;
+    }
+    var attributes = $(this).serialize();
+    tempFeature.attributes = {"id":now.maxfeatureid, 'layer':activeDrawLayer.id};
+    var encodedFeature = new OpenLayers.Format.GeoJSON().write(tempFeature);
+    tempFeature.layer.removeFeatures([tempFeature]);
+    console.log("now doing the close popup and sending to server");
+    map.removePopup(activePopup);
+    now.serverAddFeature(encodedFeature, attributes); 
+    activePopup = null
+    tempFeature = null;
+    return false;
+  });
+
+}
+
+
+var finishDraw = function(feature){
+  if (tempFeature != null){
+    tempFeature.layer.removeFeatures([tempFeature]);
+  }
+  if (activePopup != null){
+    $("#attributeForm").validationEngine('hideAll');
+    map.removePopup(activePopup);
+  }
+  tempFeature = feature;
+  console.log("Now getting the attribute form from server");
+  now.serverGetAttributeForm();
+  return;
+
+}
+
+now.clientModifyFeature = function(thejson){
+  console.log("here is the feature that was recieved : " + thejson);
+  
+  var thefeature = new OpenLayers.Format.GeoJSON().read(thejson, "Feature");
+  var workinglayer = map.getLayer(thefeature.attributes['layer']);
+  console.log("working with " + workinglayer.id + " and a length of " + workinglayer.getFeaturesByAttribute('id', thefeature.attributes['id']).length);  
+  workinglayer.removeFeatures(workinglayer.getFeaturesByAttribute('id', thefeature.attributes['id']));
+
+  //var jsonobj = $.parseJSON(thejson);
+  //console.log(jsonobj['layer']);
+  //var thefeatures = new OpenLayers.Format.WKT().read(jsonobj['feature']);
+  console.log(thefeature.attributes['layer']);
+  workinglayer.addFeatures(thefeature);
+  return;
+
+}
+
+
+var finishModification = function(feature){
+  var encoded = new OpenLayers.Format.GeoJSON().write(feature);
+  activeDrawLayer.removeFeatures([feature]);
+  now.serverModifyFeature(encoded);
+  return;
+
+}
+
+now.clientDeleteFeature = function(thejson){
+  var jsonobj = $.parseJSON(thejson);
+  console.log("deleting feature from " + jsonobj['layer']);
+  var workinglayer = map.getLayer(jsonobj['layer']);
+  var deletefeatures = workinglayer.getFeaturesByAttribute('id', jsonobj['featureid']);
+  console.log("going to delete this many features : " + deletefeatures.length);
+  if (deletefeatures.length >0 ){
+    for (var x = 0; x<deletefeatures.length; x++){
+      console.log("delete feautre: " + deletefeatures[x].attributes.id);
+    }
+    workinglayer.removeFeatures(deletefeatures);
+  }
+  else {
+    console.log("We couldn't find the send, so not deleting");
+  }
+  return;
+}
+
+var deleteFeature = function(feature){
+  var encoded = {'layer': activeDrawLayer.id , 'featureid':  feature.attributes.id};
+  encoded = JSON.stringify(encoded);
+  now.serverDeleteFeature(encoded);
+  console.log("now deleting the feature");
+}
+
+
+//
+// Still need to figure out the handler.  I just need to add it with the layer.
+var startControl = function(action, layerid){
+  clearActiveControls(); 
+  console.log("here is the layerid in the modify tool: " + layerid);
+  activeDrawLayer = map.getLayer(layerid);
+  console.log(activeDrawLayer.geometryType);
+  if (action == 'draw'){
+    var thehandler = null;
+    if (handlerArray[activeDrawLayer.name] == "Point"){ thehandler = OpenLayers.Handler.Point;}
+    else if (handlerArray[activeDrawLayer.name] == "LineString"){ thehandler = OpenLayers.Handler.LineString;}
+    else if (handlerArray[activeDrawLayer.name] == "Polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
+    activeControl = new OpenLayers.Control.DrawFeature(activeDrawLayer, thehandler, {'featureAdded':finishDraw});
+  }
+  else if (action == 'modify'){
+console.log("starting up the modify control");
+    activeControl = new OpenLayers.Control.ModifyFeature(activeDrawLayer, {mode: OpenLayers.Control.ModifyFeature.DRAG| OpenLayers.Control.ModifyFeature.RESHAPE, 'onModificationEnd': finishModification}); //, geometryTypes:["OpenLayers.Geometry.Polygon"]
+  }
+  else if (action == 'erase'){
+    activeControl = new OpenLayers.Control.SelectFeature(activeDrawLayer, {'onSelect':deleteFeature});
+  }
+  else {
+    //need to add a default select features
+    return;
+  }
+  map.addControl(activeControl);
+  activeControl.activate();
+
+
+}
+
+
+
+
+var menucontrol = function(){
+	  console.log("at least I got here " + $("#newLayerForm").length);
+	  if ($("#newLayerForm").length == 0){
+		var thediv = $("<div>").attr('id', "newLayerForm");
+		$("#popupholder").append(thediv);
+	   }
+
+	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[required]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Picture of point<input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Picture of connection<input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Picture of polygon<br/><input type='submit' value='Next'></form>");
+          //$("#newLayerForm1").validationEngine("attach");
+		  
+	 
+	  $("#newLayerForm").dialog({autoOpen:true});
+	  $("#newLayerForm1").submit(function(){
+	    if ($("#newLayerForm1").validationEngine("validate") == false){
+	      return false;
+	    }
+	    //this is a non-major bug that if two users happen to enter the names as the same time during the form 
+	    //entry and it is propogated to everyone else this will create two layers with the same name
+ 	    console.log("the number of layers with this name: " + map.getLayersByName($("#layertitle").val()).length);
+	    if (map.getLayersByName($("#layertitle").val()).length > 0){
+	      $("#layertitle").validationEngine('showPromit', 'There is already a layer with that name', 'load');
+	      return false;
+	    }
+
+	    now.newlayerinfo = $(this).serialize();
+	    
+	    var thehtml = "<form action='#' id='newLayerForm2'>";
+	    if ($("#type").val() == "point"){
+	      thehtml += "<input name='symbol' type='radio' value='star'>Star<input name='symbol' type='radio' value='plus'>Plus<input name='symbol' type='radio' value='square'>Square";
+	    }
+	    thehtml += "<input name='picker' id='picker' type='text' value='#123456'/><div id='colorpicker'></div><input type='submit' value='Next'/></form>";
+	    $("#newLayerForm").html(thehtml);
+	    $("#colorpicker").farbtastic("#picker");
+	    $("#newLayerForm2").submit(function(){
+		now.newlayerinfo += "&" + $(this).serialize();
+                $("#newLayerForm").html("<form action='#' id='newLayerForm3'>Enter the Attribute block<br/><textarea id='menuattributes' rows='6'>\
+	{ 'title': \
+	  {\
+	    'label': 'Title',\
+	    'required': true,\
+	    'type': 'textfield'\
+	  },\
+	  'description':\
+	  {\
+	    'label': '',\
+	    'required':true\
+	    'rows': 6\
+	  }\
+	}</textarea><br/><input type='submit' value='Save'></form>");
+	        $("#newLayerForm3").submit(function(){
+		  now.newlayerinfo += "&" + $(this).serialize();
+		  now.serverNewLayer();
+		  $("#newLayerForm").dialog('destroy');
+		  return false;
+	        });
+		return false;
+	    });
+	    return false;
+	  });
+	  //$("#newLayerFormSubmit").click(function(){console.log($("#newLayerForm1").serialize());});
+	 
+	}
+var appendLayerMenu = function(){
+  $(".dataLayersDiv").children(".labelSpan").each( function(){
+    var child = $(this);
+    var thelayer = map.getLayersByName(child.html());
+    console.log(child.html() + " numer of layers found " + thelayer.length);
+    if (thelayer.length > 0){
+      var olid = thelayer[0].id;
+      var ident = "menu--" + olid;
+      ident = ident.replace(/\./g, '-');
+      //var thehtml = "<ul><li><a href='#'>Dropdown</a></li></ul>";
+      var thehtml = "<ul>\
+			<li><a href='javascript:startControl(\"draw\",\"" + olid + "\");'>Add</a></li>\
+			<li><a href='javascript:startControl(\"modify\",\"" + olid + "\");'>Modify</a></li>\
+			<li><a href='javascript:startControl(\"erase\",\"" + olid + "\");'>Erase</a></li>\
+		</ul>";
+      console.log("adding the new ident " + ident);
+      child.after("<span id='" + ident + "'>HERE</span>");
+      $("#" + ident).menu({
+        content: thehtml,
+        maxHeight: 100
+        //positionOpts: {offsetX: 10, offsetY: 20},
+        //showSpeed: 300
+      })
+      $("#" + ident).children("a[href$='#']").click(function(){
+        console.log("now adding the thing to the thing");
+      });
+    }
+
+
+  });
+
+
+
+}
                 
 //******************************* START INIT **********************************************                
                 
 
 $(document).ready(function(){ 
+
+
+  var thediv = $("<div>").attr('id', "newUserForm").html("<form action='#' id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' type='text'/><input type='submit' value='Join'></form>");
+  $("#popupholder").append(thediv);
+  $("#newUserForm").dialog({autoOpen:true});
+  $("#newNameForm").submit(function(){
+    now.username = $("#newNameFormUsername").val();
+    console.log("added username " + now.username);
+    $("#newUserForm").dialog("close");
+    return false;
+  });
+
+
+
+
+  now.clientNewLayer = function(thejson){
+    var layerinfo = $.parseJSON(thejson);
+    //layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
+    var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/ajax",params: {"service":"nodes", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
+    map.addLayers([newlayer]);
+
+  }
+
         
         selectedFeatures = [];
 
@@ -569,7 +908,10 @@ $(document).ready(function(){
         OpenLayers.Renderer.symbol.arrow = [0,2, 1,0, 0,2, 2,2, 1,0, 0,2];
 
         var draw_layer = new OpenLayers.Layer.Vector("Draw Layer", {projection:normalproj});
-        node_layer = new OpenLayers.Layer.Vector("node_layer", { styleMap:stylize_nodes(),visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/ajax",params: {"service":"nodes", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
+        handlerArray["Draw Layer"] = "Point";
+        var poly_layer = new OpenLayers.Layer.Vector("Poly Layer", {projection:normalproj}); //, geometryType: OpenLayers.Geometry.Polygon
+        handlerArray["Poly Layer"] = "Polygon";
+        //node_layer = new OpenLayers.Layer.Vector("node_layer", { styleMap:stylize_nodes(),visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/ajax",params: {"service":"nodes", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
 
         //edge_layer = new OpenLayers.Layer.Vector("edge_layer", {styleMap:stylize_edges(), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/businessclustermap/ajax",params: {"service":"edges", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
 			
@@ -579,7 +921,7 @@ $(document).ready(function(){
                 
         
 		
-		map.addLayers([googlelayer, draw_layer, node_layer]); //dir_layer, //, edge_layer, node_layer 
+		map.addLayers([googlelayer, draw_layer, poly_layer]); //dir_layer, //, edge_layer, node_layer 
 
 
         var panpanel = new OpenLayers.Control.PanZoomBar({slideFactor:300, displayClass:"olControlPanZoomBarPanup"});
@@ -592,15 +934,19 @@ $(document).ready(function(){
        	map.addControl(dragpan);
        	dragpan.activate();
 
-
-        var activeControl = new OpenLayers.Control.DrawFeature(draw_layer, OpenLayers.Handler.Point, {'featureAdded': finishDrawPoint});
+/*
+        activeControl = new OpenLayers.Control.DrawFeature(draw_layer, OpenLayers.Handler.Point, {'featureAdded': finishDraw});
+        activeDrawLayer = draw_layer;
 	map.addControl(activeControl);
 	activeControl.activate();
+*/
 	
 	var thediv = $("<div>").attr('id', 'layermenudiv');
 	$("#popupholder").append(thediv);
 
 	$("#layermenudiv").dialog({autoOpen:true});
+
+//******************************Layer functions
 
 	layerswitcher = new OpenLayers.Control.LayerSwitcher({div:OpenLayers.Util.getElement("layermenudiv"), roundedCorner:true});
 	map.addControl(layerswitcher);
@@ -608,24 +954,7 @@ $(document).ready(function(){
 	var upperpart = $("<span>").html("Layer Menu");
 	var lowerpart = $("<span>").html("<div id='newLayerDiv'>Add a new layer</div>");
 	$("#layermenudiv").append(lowerpart).prepend(upperpart);
-	$("#newLayerDiv").click(function(){
-	  console.log("at least I got here");
-	  var thediv = $("<div>").attr('id', "newLayerForm").html("<form action='#' id='newLayerForm1'><input name='firstname' type='text'/><input name='lastname' type='text'/><input type='submit' value='Next'></form>");
-	 
-	  $("#popupholder").append(thediv);
-	  $("#newLayerForm1").submit(function(){
-	    now.newlayerinfo = $(this).serialize();
-	    $("#newLayerForm").html("<form action='#' id='newLayerForm2'><input name='thirdname' type='text'><input type='submit' value='Send'/></form>");
-	    $("#newLayerForm2").submit(function(){
-		now.newlayerinfo += "&" + $(this).serialize();
-		now.setNewLayer();
-		return false;
-	    });
-	    return false;
-	  });
-	  //$("#newLayerFormSubmit").click(function(){console.log($("#newLayerForm1").serialize());});
-	  $("#newLayerForm").dialog({autoOpen:true});
-	});
+	$("#newLayerDiv").click(menucontrol);
 	
        	
        	/*
