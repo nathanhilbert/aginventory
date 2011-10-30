@@ -147,15 +147,6 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 
 
 
-//********************************Now functions ****************************************************
-
-
-
-
-
-
-
-
 
 
 
@@ -268,170 +259,9 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 
 
 
-//*************************Hover functions***************************************************************
-   
-   /*
-          var output = "Building: " + id + " Area: " + area.toFixed(2);
-        dialog = $("<div title='Feature Info'>" + output + "</div>").dialog();
-    },
-    featureunselected: function() {
-        
-    }
-}); 
-   */
-   
-   
-   
-   
-   
-    function makeHover(feature){
-    
-        
-    
-    /*
-            feature.popup = new OpenLayers.Popup.FramedCloud("chicken", 
-                                     feature.geometry.getBounds().getCenterLonLat(),
-                                     null,
-                                     "<div style='font-size:.8em'>Feature: " + feature.id +"<br>Area: " + feature.geometry.getArea()+"</div>",
-                                     null, false, null);
-            map.addPopup(feature.popup)
-            */
-        /*
-    $('[id=temphoverdialog]').dialog("destroy").remove();
-    
-    var positionleft = "left";
-    var positiontop = "top";
-    if ($("#tempdialog").length){
-         var parentpos = $("#tempdialog").parent().position();
-         positiontop = parentpos.top +200;
-         positionleft = parentpos.left;
-
-    }
-
-        
-    $("<div id='temphoverdialog' title='Highlighted Business' class='infopopup'><strong>Category :</strong> " +   feature.attributes.category + "<br><strong>Business Title :</strong> " +  feature.attributes.title + "</div>").dialog({ position: [positionleft, positiontop]});
-    */
-        timeOut = null;
-    }
-
-
-
-    var onHover = function(evt){
-        $("#thebus_" + evt.feature.attributes.bcid).addClass("busselected");
-        //timeOut = setTimeout(function(){makeHover(evt.feature)}, 400);
-        /*
-        if ((selectedFeaturebcid) &&(selectedFeaturebcid != feature.bcid)){
-            timeOut = setTimeout(function(){makeHover(feature)}, 400);
-        }
-        else if (!selectedFeaturebcid){
-            timeOut = setTimeout(function(){makeHover(feature)}, 400);
-        }
-        */
-        
-        
-    } 
-    
-    function onunHover(evt){
-        $("#thebus_" + evt.feature.attributes.bcid).removeClass("busselected");
-        /*
-        if (timeOut != null){
-            clearTimeout(timeOut);
-            timeOut = null;
-        }
-        */
-        /*
-        if (evt.feature.popup != null){
-            map.removePopup(evt.feature.popup);
-            evt.feature.popup.destroy();
-            evt.feature.popup = null;
-        }
-        */
-        //$('[id=temphoverdialog]').dialog("destroy").remove();
-
-
-        //document.getElementById('FeatureHighlightedCategory').innerHTML = "Nothing Highlighted";
-        //document.getElementById('FeatureHighlightedTitle').innerHTML = "Nothing Highlighted";
-    
-    
-
-    }
-//*******************************End Hover Functions**************************************************************
-
-
-
-
-
-
-
 
 //******************************Action Handler **********************************************************
-	
 
-	
-	function mydblclick(feature) {
-	var options = {title: "Business Case", updateMethod:'none', href:"/businesscaseapp/view/" + feature.attributes.bcid + "/mapping/"};
-        Popups.openPath(document.getElementById('map'), options, null);    
-	}   
-
-var onFeatureUnSelectNodes = function(feature){
-    onFeatureSelectNodes(feature);
-    return;
-
-}
-
-    var onFeatureSelectNodes = function(feature){
-    /*
-        if (feature.popup != null){
-            map.removePopup(feature.popup);
-            feature.popup.destroy();
-            feature.popup = null;
-        }
-        */
-        updatetoolbar();
-        var tempstring = "";
-        edge_layer.removeAllFeatures();
-        //alert(node_layer.selectedFeatures[0].attributes.bcid);
-        for (var i =0; i< node_layer.selectedFeatures.length;i++){
-            tempstring += node_layer.selectedFeatures[i].attributes.bcid + "*^";
-        }
-
-    
-
-        edge_layer.protocol.params['selectedFeatures'] = tempstring;
-        
-
-        edge_layer.strategies[0].update({"force":true});
-
-        
-        return;
-
-            
-    }
-    
-    
-//toolbar functions
-var checktimer = function(){
-    if (updatetimer != null){
-        clearTimeout(updatetimer);
-        updatetimer = null;
-    }
-    updatetimer = setTimeout(function() {
-          updatetoolbar();
-    }, 1000);
-    return;
-
-}    
-
-
-var checkinselected = function(bcid){
-    for (var i = 0;i< node_layer.selectedFeatures.length;i++){
-        if (node_layer.selectedFeatures[i].attributes.bcid == bcid){
-            return true;
-        }
-    }
-    return false;
-
-}
 
 
     
@@ -749,7 +579,6 @@ console.log("starting up the modify control");
 
 
 var menucontrol = function(){
-	  console.log("at least I got here " + $("#newLayerForm").length);
 	  if ($("#newLayerForm").length == 0){
 		var thediv = $("<div>").attr('id', "newLayerForm");
 		$("#popupholder").append(thediv);
@@ -825,9 +654,10 @@ var appendLayerMenu = function(){
 			<li><a href='javascript:startControl(\"modify\",\"" + olid + "\");'>Modify</a></li>\
 			<li><a href='javascript:startControl(\"erase\",\"" + olid + "\");'>Erase</a></li>\
 		</ul>";
-      console.log("adding the new ident " + ident);
-      child.after("<span id='" + ident + "'>HERE</span>");
+      //console.log("adding the new ident " + ident);
+      child.before("<span id='" + ident + "' class='dropdownmenu'></span>");
       $("#" + ident).menu({
+        callerOnState: 'fgmenu-open',
         content: thehtml,
         maxHeight: 100
         //positionOpts: {offsetX: 10, offsetY: 20},
@@ -844,6 +674,32 @@ var appendLayerMenu = function(){
 
 
 }
+
+
+
+var setupDateSlider = function(){
+
+    var minDate = new Date(2010, 8-1, 1);
+    var maxDate = new Date(2010, 8-1, 31);
+	 console.log(maxDate.getTime());
+    $('#bottomslider').slider({range: false,
+		  min: minDate.getTime(),
+        max: maxDate.getTime(),
+        value: maxDate.getTime(),
+        change: function(event, ui) {
+            var date = new Date(ui.value);
+				$("#sliderresult").html("You are currently working from : " +  $.datepicker.formatDate('mm/dd/yy', date));
+            //date.setDate(date.getDate() + ui.value);
+				//console.log("the min date " + $.datepicker.formatDate('mm/dd/yy', date));
+            //$('#startDate').val($.datepicker.formatDate('mm/dd/yy', date));
+        }
+    });
+
+
+
+
+}
+
                 
 //******************************* START INIT **********************************************                
                 
@@ -871,6 +727,17 @@ $(document).ready(function(){
     map.addLayers([newlayer]);
 
   }
+
+
+//top menu init
+	var themenu = $("<div>").addClass("topmenu ui-widget-header").attr('id', 'topmenuwrapper').html("something");
+   $("#popupholder").append(themenu);
+
+	var themenu = $("<div>").attr('id', 'bottomwrapper').html("<div id=bottomslider></div><span id='sliderresult'></span>");
+   $("#popupholder").append(themenu);
+   $("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"something"});
+   
+   setupDateSlider();
 
         
         selectedFeatures = [];
@@ -1059,14 +926,7 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
 
             
         
-        /*
-        if (selectedFeaturebcid != 0){
-            var callurl = "/businessclustermap/ajax?bcid=" + selectedFeaturebcid;
-            var response = OpenLayers.Request.GET({'url': callurl, 'callback': parseNodes });         
-        } else {
-            moveEnd();
-        }
-        */
+
      
 
         var ol = new OpenLayers.Layer.WMS(
@@ -1076,17 +936,13 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
         );
         
 
-        //var mapResolutions = [39135.7584820001];
-        
-        ///var ol = new OpenLayers.Layer.ArcGISCache("Openlayers WMS","http://ampgis.osu.edu/arcgiscache/Hotspot_analysis/Layers/_alllayers",{tileSize:  new OpenLayers.Size(512,512), tileOrigin: new OpenLayers.LonLat(-20037508.342787,20037508.342787),resolutions: mapResolutions,sphericalMercator: true,maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34,20037508.34, 20037508.34),useArcGISServer: false,isBaseLayer: true,projection: mercator});
-        
      
 
         
     // create an overview map control with non-default options
         var controlOptions = {
             mapOptions: {
-        		projection: mercator
+        		projection: normalproj
             },
             layers:[ol],
             maximized :true

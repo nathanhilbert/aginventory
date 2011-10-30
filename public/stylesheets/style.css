@@ -2,3 +2,33 @@ body {
   padding: 50px;
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
+
+.topmenu {
+  position:fixed;
+  top:0px;
+  left:300px;
+  width:350px;
+
+}
+
+.dropdownmenu {
+  width: 16px;
+  height: 16px;
+  float: right;
+  background: url('/images/google_images.png') no-repeat -160px -120px;
+  cursor:pointer;
+
+
+}
+.fgmenu-open {
+  background: url('/images/google_images.png') no-repeat -160px -100px;
+
+}
+
+.dropdownmenu:hover{
+	background: url('/images/google_images.png') no-repeat -140px -100px;
+}
+
+
+
+

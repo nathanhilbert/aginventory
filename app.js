@@ -39,6 +39,7 @@ app.get('/', function(req, res){
   
 });
 
+
 app.get('/ajax', function(req,res){
   res.writeHead(200, {'Content-Type': 'text/plain'});
   res.end('{"type":"FeatureCollection", "features":[{"type":"Feature","geometry":{"type":"Point","coordinates":["-81.9569", "40.7746"]}, "properties":{"bcid":"65"}}]}');
