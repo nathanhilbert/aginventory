@@ -423,7 +423,7 @@ console.log("here is the feature that was recieved : " + thejson);
   //console.log(jsonobj['layer']);
   //var thefeatures = new OpenLayers.Format.WKT().read(jsonobj['feature']);
   console.log(thefeature.attributes['layer']);
-  map.getLayer(thefeature.attributes['layer']).addFeatures(thefeature);
+  map.getLayersByName(thefeature.attributes['layer'])[0].addFeatures(thefeature);
   return;
 
 
@@ -441,7 +441,6 @@ var closedPopup = function() {
 
 
 now.clientGetAttributeForm = function(formobj){
-  console.log(formobj);
   var temppoint = tempFeature.geometry.getCentroid();
   var lonlat = new OpenLayers.LonLat(temppoint.x, temppoint.y);
   activePopup = new OpenLayers.Popup.AnchoredBubble(
@@ -453,7 +452,6 @@ now.clientGetAttributeForm = function(formobj){
     true,
     closedPopup
   );
-  console.log("now opening the popup");
   activePopup.autoSize = true;
   activePopup.closeOnMove = false;
   map.addPopup(activePopup);
@@ -463,7 +461,8 @@ now.clientGetAttributeForm = function(formobj){
       return false;
     }
     var attributes = $(this).serialize();
-    tempFeature.attributes = {"id":now.maxfeatureid, 'layer':activeDrawLayer.id};
+	 console.log("here are my attributes " + attributes);
+    tempFeature.attributes = {'layer':activeDrawLayer.name};
     var encodedFeature = new OpenLayers.Format.GeoJSON().write(tempFeature);
     tempFeature.layer.removeFeatures([tempFeature]);
     console.log("now doing the close popup and sending to server");
@@ -486,7 +485,6 @@ var finishDraw = function(feature){
     map.removePopup(activePopup);
   }
   tempFeature = feature;
-  console.log("Now getting the attribute form from server");
   now.serverGetAttributeForm();
   return;
 
@@ -553,9 +551,9 @@ var startControl = function(action, layerid){
   console.log(activeDrawLayer.geometryType);
   if (action == 'draw'){
     var thehandler = null;
-    if (handlerArray[activeDrawLayer.name] == "Point"){ thehandler = OpenLayers.Handler.Point;}
-    else if (handlerArray[activeDrawLayer.name] == "LineString"){ thehandler = OpenLayers.Handler.LineString;}
-    else if (handlerArray[activeDrawLayer.name] == "Polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
+    if (activeDrawLayer.layertype == "Point"){ thehandler = OpenLayers.Handler.Point;}
+    else if (activeDrawLayer.layertype == "LineString"){ thehandler = OpenLayers.Handler.LineString;}
+    else if (activeDrawLayer.layertype == "Polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
     activeControl = new OpenLayers.Control.DrawFeature(activeDrawLayer, thehandler, {'featureAdded':finishDraw});
   }
   else if (action == 'modify'){
@@ -583,6 +581,7 @@ var menucontrol = function(){
 		var thediv = $("<div>").attr('id', "newLayerForm");
 		$("#popupholder").append(thediv);
 	   }
+ 		var newlayerinfo = "";
 
 	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[required]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Picture of point<input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Picture of connection<input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Picture of polygon<br/><input type='submit' value='Next'></form>");
           //$("#newLayerForm1").validationEngine("attach");
@@ -601,7 +600,7 @@ var menucontrol = function(){
 	      return false;
 	    }
 
-	    now.newlayerinfo = $(this).serialize();
+	    newlayerinfo = $(this).serialize();
 	    
 	    var thehtml = "<form action='#' id='newLayerForm2'>";
 	    if ($("#type").val() == "point"){
@@ -611,28 +610,16 @@ var menucontrol = function(){
 	    $("#newLayerForm").html(thehtml);
 	    $("#colorpicker").farbtastic("#picker");
 	    $("#newLayerForm2").submit(function(){
-		now.newlayerinfo += "&" + $(this).serialize();
-                $("#newLayerForm").html("<form action='#' id='newLayerForm3'>Enter the Attribute block<br/><textarea id='menuattributes' rows='6'>\
-	{ 'title': \
-	  {\
-	    'label': 'Title',\
-	    'required': true,\
-	    'type': 'textfield'\
-	  },\
-	  'description':\
-	  {\
-	    'label': '',\
-	    'required':true\
-	    'rows': 6\
-	  }\
-	}</textarea><br/><input type='submit' value='Save'></form>");
+		newlayerinfo += "&" + $(this).serialize();
+                $("#newLayerForm").html('<form action="#" id="newLayerForm3">Enter the Attribute block<br/><textarea id="menuattributes" name="menuattributes" rows="6">{ "title": {"label": "Title","required": "true","type": "textfield"},"description":{"label": "something","type":"textarea", "required":"true","rows": "6"}}</textarea><br/><input type="submit" value="Save"></form>');
 	        $("#newLayerForm3").submit(function(){
-		  now.newlayerinfo += "&" + $(this).serialize();
-		  now.serverNewLayer();
-		  $("#newLayerForm").dialog('destroy');
-		  return false;
+				  newlayerinfo += "&" + $(this).serialize();
+				  //console.log(newlayerinfo);
+				  now.serverNewLayer(newlayerinfo);
+				  $("#newLayerForm").dialog('destroy');
+				  return false;
 	        });
-		return false;
+			return false;
 	    });
 	    return false;
 	  });
@@ -700,33 +687,61 @@ var setupDateSlider = function(){
 
 }
 
+
+now.clientCheckUser = function(bool, res, themessage){
+   if (bool == true){
+		now.uid = res;
+		$("#newNameForm").validationEngine('hideAll');
+   	$("#newUserForm").dialog("close");
+		initfunction();
+	}
+	else {
+		$("#"+res).validationEngine('showPrompt', themessage);
+	}
+}
+
+now.clientNewLayer = function(thejson){
+	var layerinfo = $.parseJSON(thejson);
+	//layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
+	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
+		protocol: new OpenLayers.Protocol({format: new OpenLayers.Format.GeoJSON()})});
+   newlayer.layertype = layerinfo['layertype'];
+	map.addLayers([newlayer]);
+
+}
                 
 //******************************* START INIT **********************************************                
-                
+
+
 
 $(document).ready(function(){ 
 
-
-  var thediv = $("<div>").attr('id', "newUserForm").html("<form action='#' id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' type='text'/><input type='submit' value='Join'></form>");
+  var thediv = $("<div>").attr('id', "newUserForm").html("<form action='#' id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' value='Log in'></form>");
   $("#popupholder").append(thediv);
   $("#newUserForm").dialog({autoOpen:true});
   $("#newNameForm").submit(function(){
-    now.username = $("#newNameFormUsername").val();
-    console.log("added username " + now.username);
-    $("#newUserForm").dialog("close");
+    if ($(this).validationEngine("validate") == false){
+      return false;
+    }
+    now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), window.location.pathname.split('/')[1]);
     return false;
   });
 
+});
 
 
 
-  now.clientNewLayer = function(thejson){
-    var layerinfo = $.parseJSON(thejson);
-    //layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
-    var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/ajax",params: {"service":"nodes", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
-    map.addLayers([newlayer]);
+                
 
-  }
+
+
+
+
+
+
+var initfunction =function(){
+
+
 
 
 //top menu init
@@ -772,8 +787,8 @@ $(document).ready(function(){
         
         
         
-        OpenLayers.Renderer.symbol.arrow = [0,2, 1,0, 0,2, 2,2, 1,0, 0,2];
-
+       // OpenLayers.Renderer.symbol.arrow = [0,2, 1,0, 0,2, 2,2, 1,0, 0,2];
+/*
         var draw_layer = new OpenLayers.Layer.Vector("Draw Layer", {projection:normalproj});
         handlerArray["Draw Layer"] = "Point";
         var poly_layer = new OpenLayers.Layer.Vector("Poly Layer", {projection:normalproj}); //, geometryType: OpenLayers.Geometry.Polygon
@@ -782,13 +797,13 @@ $(document).ready(function(){
 
         //edge_layer = new OpenLayers.Layer.Vector("edge_layer", {styleMap:stylize_edges(), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/businessclustermap/ajax",params: {"service":"edges", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
 			
-
+*/
 
 
                 
         
 		
-		map.addLayers([googlelayer, draw_layer, poly_layer]); //dir_layer, //, edge_layer, node_layer 
+		map.addLayers([googlelayer]); //dir_layer, //, edge_layer, node_layer 
 
 
         var panpanel = new OpenLayers.Control.PanZoomBar({slideFactor:300, displayClass:"olControlPanZoomBarPanup"});
@@ -1013,5 +1028,5 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
     
     
  
-});//ended init here
+}//ended init here
        
