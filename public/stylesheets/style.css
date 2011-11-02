@@ -29,6 +29,18 @@ body {
 	background: url('/images/google_images.png') no-repeat -140px -100px;
 }
 
+.drawimage{
+	width: 20px;
+	height: 20px;
+	cursor:pointer;
+	display:inline-block;
+	background: url('/OpenLayers/theme/default/img/add_point_on.png') no-repeat 0px 0px;
+}
+
+.drawimage:hover{
+	background: url('/OpenLayers/theme/default/img/add_point_off.png') no-repeat 0px 0px;
+}
+
 
 
 

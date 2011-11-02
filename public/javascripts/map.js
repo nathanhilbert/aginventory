@@ -593,6 +593,8 @@ console.log("starting up the modify control");
   }
   map.addControl(activeControl);
   activeControl.activate();
+	layerswitcher.redraw();
+
 
 
 }
@@ -654,9 +656,9 @@ var appendLayerMenu = function(){
   $(".dataLayersDiv").children(".labelSpan").each( function(){
     var child = $(this);
     var thelayer = map.getLayersByName(child.html());
-    console.log(child.html() + " numer of layers found " + thelayer.length);
     if (thelayer.length > 0){
       var olid = thelayer[0].id;
+		var thelayername = thelayer[0].name;
       var ident = "menu--" + olid;
       ident = ident.replace(/\./g, '-');
       //var thehtml = "<ul><li><a href='#'>Dropdown</a></li></ul>";
@@ -673,10 +675,18 @@ var appendLayerMenu = function(){
         maxHeight: 100
         //positionOpts: {offsetX: 10, offsetY: 20},
         //showSpeed: 300
-      })
+      });
       $("#" + ident).children("a[href$='#']").click(function(){
         console.log("now adding the thing to the thing");
       });
+		//now adding the draw stuff
+		if(activeControl){
+			console.log("checking " + activeControl.layer.name + " " + thelayer.name  + " and " + activeControl.CLASS_NAME);
+			if (activeControl.layer.name == thelayername && (activeControl.CLASS_NAME == "OpenLayers.Control.DrawFeature" || activeControl.CLASS_NAME == "OpenLayers.Control.ModifyFeature")){
+				console.log("adding the images");
+				$('[name="' + activeDrawLayer.name + '"]:checkbox').before('<span class="drawimage"></span>');
+			}
+		}
     }
 
 
@@ -685,6 +695,8 @@ var appendLayerMenu = function(){
 
 
 }
+
+
 
 
 
@@ -787,7 +799,7 @@ now.clientGetAttributes = function(thehtml){
   var temppoint = tempFeature.geometry.getCentroid();
   var lonlat = new OpenLayers.LonLat(temppoint.x, temppoint.y);
 	
-	thehtml += "<a id='editattributes>Edit</a>";
+	thehtml += "<a id='editattributes' href='#'>Edit</a>";
 
 
   activePopup = new OpenLayers.Popup.AnchoredBubble(
