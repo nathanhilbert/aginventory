@@ -447,12 +447,11 @@ var closedPopup = function() {
   map.removePopup(activePopup);
   tempFeature.layer.removeFeatures([tempFeature]);
   tempFeature = null;
-  return;
 
 }
 
 
-now.clientGetAttributeForm = function(formobj){
+now.clientGetAttributeForm = function(formobj, shapeid){
   var temppoint = tempFeature.geometry.getCentroid();
   var lonlat = new OpenLayers.LonLat(temppoint.x, temppoint.y);
   activePopup = new OpenLayers.Popup.AnchoredBubble(
@@ -467,23 +466,41 @@ now.clientGetAttributeForm = function(formobj){
   activePopup.autoSize = true;
   activePopup.closeOnMove = false;
   map.addPopup(activePopup);
-  
-  $("#attributeForm").submit(function(){
-    if ($(this).validationEngine("validate") == false){
-      return false;
-    }
-    var attributes = $(this).serialize();
-	 console.log("here are my attributes " + attributes);
-    tempFeature.attributes = {'layer':activeDrawLayer.name};
-    var encodedFeature = new OpenLayers.Format.GeoJSON().write(tempFeature);
-    tempFeature.layer.removeFeatures([tempFeature]);
-    console.log("now doing the close popup and sending to server");
-    map.removePopup(activePopup);
-    now.serverAddFeature(encodedFeature, attributes); 
-    activePopup = null
-    tempFeature = null;
-    return false;
-  });
+  if (shapeid){
+		console.log("shapeid not null so doing it differently");
+	  $("#attributeForm").submit(function(){
+	    if ($(this).validationEngine("validate") == false){
+	      return false;
+	    }
+	    var attributes = $(this).serialize();
+		 console.log("here are my attributes " + attributes);
+	    //console.log("now doing the close popup and sending to server");
+	    map.removePopup(activePopup);
+	    now.serverUpdateAttributes(attributes, shapeid, tempFeature.layer.name); 
+	    activePopup = null
+	    tempFeature = null;
+	    return false;
+	  });
+  }
+  else{
+
+	  $("#attributeForm").submit(function(){
+	    if ($(this).validationEngine("validate") == false){
+	      return false;
+	    }
+	    var attributes = $(this).serialize();
+		 console.log("here are my attributes " + attributes);
+	    tempFeature.attributes = {'layer':activeDrawLayer.name};
+	    var encodedFeature = new OpenLayers.Format.GeoJSON().write(tempFeature);
+	    tempFeature.layer.removeFeatures([tempFeature]);
+	    //console.log("now doing the close popup and sending to server");
+	    map.removePopup(activePopup);
+	    now.serverAddFeature(encodedFeature, attributes); 
+	    activePopup = null
+	    tempFeature = null;
+	    return false;
+	  });
+	}
 
 }
 
@@ -497,7 +514,7 @@ var finishDraw = function(feature){
     map.removePopup(activePopup);
   }
   tempFeature = feature;
-  now.serverGetAttributeForm();
+  now.serverGetAttributeForm(feature.layer.name);
   return;
 
 }
@@ -558,9 +575,9 @@ var startControl = function(action, layerid){
   console.log(activeDrawLayer.geometryType);
   if (action == 'draw'){
     var thehandler = null;
-    if (activeDrawLayer.layertype == "point"){ thehandler = OpenLayers.Handler.Point;}
-    else if (activeDrawLayer.layertype == "connection"){ thehandler = OpenLayers.Handler.LineString;}
+    if (activeDrawLayer.layertype == "connection"){ thehandler = OpenLayers.Handler.Path;}
     else if (activeDrawLayer.layertype == "polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
+	 else { thehandler = OpenLayers.Handler.Point;} //(activeDrawLayer.layertype == "point")
     activeControl = new OpenLayers.Control.DrawFeature(activeDrawLayer, thehandler, {'featureAdded':finishDraw});
   }
   else if (action == 'modify'){
@@ -747,13 +764,56 @@ now.clientFinishPopulate = function(){
 }        
 
 var onFeatureSelectNodes = function(feature){
+	//get their attributes
+	tempFeature = feature;
+	now.serverGetAttributes(feature.attributes.shapeid, feature.attributes.layer);
 
+}
+
+var onFeatureUnSelectNodes = function(){
+    map.removePopup(activePopup);
+    activePopup = null
+    tempFeature = null;
+}
+
+var closedAttributesPopup = function(){
+    map.removePopup(activePopup);
+    activePopup = null;
+	console.log("now deleting tempfeature");
+    tempFeature = null;
+}
+
+now.clientGetAttributes = function(thehtml){
+  var temppoint = tempFeature.geometry.getCentroid();
+  var lonlat = new OpenLayers.LonLat(temppoint.x, temppoint.y);
+	
+	thehtml += "<a id='editattributes>Edit</a>";
+
+
+  activePopup = new OpenLayers.Popup.AnchoredBubble(
+    "chicken",
+    lonlat, 
+    null,
+    thehtml,
+    null,
+    true,
+    closedAttributesPopup
+  );
+  activePopup.autoSize = true;
+  activePopup.closeOnMove = true;
+  map.addPopup(activePopup);
+
+	$("#editattributes").click(function(event){
+		map.removePopup(activePopup);
+    	activePopup = null
+		now.serverGetAttributeForm(tempFeature.layer.name, tempFeature.attributes.shapeid);
+	});
 
 }
 
 var startControls = function(){
 
-	activeControl = new OpenLayers.Control.SelectFeature(node_layer, {multiple:false, clickout:true, onSelect:onFeatureSelectNodes, onUnselect: onFeatureUnSelectNodes, hover:false});
+	activeControl = new OpenLayers.Control.SelectFeature(map.getLayersBy('isBaseLayer', false), {multiple:false, clickout:true, onSelect:onFeatureSelectNodes, onUnselect: onFeatureUnSelectNodes, hover:false});
    map.addControl(activeControl);
    activeControl.activate();
 	map.updateSize();
@@ -805,27 +865,10 @@ var initfunction =function(){
 		
 		googlelayer = new OpenLayers.Layer.Google(
 		  "Good Physical",
-          {MIN_ZOOM_LEVEL: 7, MAX_ZOOM_LEVEL: 12, "sphericalMercator": true, opacity:.45}
+          {MIN_ZOOM_LEVEL: 7, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.45, isBaseLayer:true}
         );
         //type: google.maps.MapTypeId.TERRAIN, google.maps.MapTypeId.HYBRID, google.maps.MapTypeId.SATELLITE
-        
-        
-        
-       // OpenLayers.Renderer.symbol.arrow = [0,2, 1,0, 0,2, 2,2, 1,0, 0,2];
-/*
-        var draw_layer = new OpenLayers.Layer.Vector("Draw Layer", {projection:normalproj});
-        handlerArray["Draw Layer"] = "Point";
-        var poly_layer = new OpenLayers.Layer.Vector("Poly Layer", {projection:normalproj}); //, geometryType: OpenLayers.Geometry.Polygon
-        handlerArray["Poly Layer"] = "Polygon";
-        //node_layer = new OpenLayers.Layer.Vector("node_layer", { styleMap:stylize_nodes(),visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/ajax",params: {"service":"nodes", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
-
-        //edge_layer = new OpenLayers.Layer.Vector("edge_layer", {styleMap:stylize_edges(), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], protocol: new OpenLayers.Protocol.HTTP({url:"/businessclustermap/ajax",params: {"service":"edges", "selectedFeatures":""},format: new OpenLayers.Format.GeoJSON()})});
-			
-*/
-
-
-                
-        
+  
 		
 		map.addLayers([googlelayer]); //dir_layer, //, edge_layer, node_layer 
 
@@ -840,12 +883,6 @@ var initfunction =function(){
        	map.addControl(dragpan);
        	dragpan.activate();
 
-/*
-        activeControl = new OpenLayers.Control.DrawFeature(draw_layer, OpenLayers.Handler.Point, {'featureAdded': finishDraw});
-        activeDrawLayer = draw_layer;
-	map.addControl(activeControl);
-	activeControl.activate();
-*/
 	
 	var thediv = $("<div>").attr('id', 'layermenudiv');
 	$("#popupholder").append(thediv);
@@ -880,93 +917,9 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
     map.addControl(hoverControlNodes);
     hoverControlNodes.activate();
     */
-		
-		
-		//selectControlNodes = new OpenLayers.Control.SelectFeature(node_layer, {multiple:false, clickout:true, onSelect:onFeatureSelectNodes, onUnselect: onFeatureUnSelectNodes, hover:false, toggleKey:"ctrlKey", multipleKey:"shiftKey"});
-        //map.addControl(selectControlNodes);
-        //selectControlNodes.activate();
-        
-        
-
-        
-      /*  
-        dirStyleMap = new OpenLayers.StyleMap({'default':stylizeDirection()});
-        
-    	dir_layer = new OpenLayers.Layer.Vector("direction", {styleMap: dirStyleMap});
-
-
-             
-
-
-
-
-        
-   
-        
-        
-
-        
-
-
-
-         
-        map.addLayers([googlelayer, edge_layer, dir_layer,node_layer ]);
-        //googlelayer.setOpacity(.35);
-        
-                
-
-        
-
-       
-        
-
-    
-
-        
-        
-    
-    
-      var sglclick =  new OpenLayers.Control.Click({
-                        handlerOptions: {
-                            "single": true,
-                            "stopSingle": true,
-                            "pixelTolerance": 0
-                        }
-                    });
-      map.addControl(sglclick);
-      sglclick.activate();
-      
-            */
-     //var featureclick = new OpenLayers.Handler.Feature(this, node_layer,{dblclick:mydblclick, 'click': onFeatureSelectNodes}, {'double': true, single: true,stopDouble: true, stopSingle: true} );
-     //var featureclick = new OpenLayers.Handler.Feature(this, node_layer,{'click': onFeatureSelectNodes}, {'double': false, single: true,stopDouble: true, stopSingle: true} );
-
-        //featureclick.activate();
-        
-        
-    
-
-    
-
-    
-        
-
-        //map.events.register("moveend", map, moveEnd);
+	
+        map.setCenter(mycenter,1);
   
-        //googlelayer.setMapObjectCenter(mycenter, 9);
-        map.setCenter(mycenter,9);
-        /*
-        for(var x=0;x<mycases.length; x++){
-            var longlat = new OpenLayers.LonLat(mycases[x][0], mycases[x][1]);
-            var point = new OpenLayers.Geometry.Point(longlat.lon, longlat.lat);
-            point.transform(normalproj, map.getProjectionObject());
-            mycases_layer.addFeatures(new OpenLayers.Feature.Vector(point, {'bcid': mycases[x][2]}));
-        }
-        */
-
-            
-        
-
-     
 
         var ol = new OpenLayers.Layer.WMS(
             "Openlayers WMS", 
@@ -975,9 +928,6 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
         );
         
 
-     
-
-        
     // create an overview map control with non-default options
         var controlOptions = {
             mapOptions: {
@@ -989,70 +939,11 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
         var overview2 = new OpenLayers.Control.OverviewMap(controlOptions);
         map.addControl(overview2);
     
-        
-        $("#fullscreen").click(function(event){gofullscreen();});
-        
-        
-        //setup the left toolbar
-        ismin = false;
-        
-        $("#toolbarmin").click(function(event){minimizeToolbar();});
-        
-        //do delay on the screen move or zoom in make sure to cancel the delay if it does not apply
-        /*
-        window.setTimeout(function() {
-            alert("Hello World!");
-        }, 500);
-        */
-
-        
-        //feature.onScreen() return bool
-  //      map.events.register("moveend", map, checktimer);
-        
-        var loadonce = true;
-
-	
-	
-	//now = nowInitialize();
-	now.recieveMessage = function(){
-		console.log("recievemessage was called");
-	}
-
-
-	//$(foo).dialog({autoOpen:true});
-	now.createPopup = function(popupmessage){
-	  var foo = $("<span>").html(popupmessage);
-	  $(foo).dialog({autoOpen:true});
-	}
 
 	now.populateMap();
 	
 	
 
-//I think this only happens once as long as it isnt destroyed and reloaded
-/*
-        node_layer.events.register("loadend", node_layer, function(){
-            if (loadonce){
-                if (Drupal.settings.businessclustermap.mapid){
-                    var resultsarray = node_layer.getFeaturesByAttribute('bcid', Drupal.settings.businessclustermap.mapid);
-                    if (resultsarray.length > 0 ){
-                        var thelonlat = new OpenLayers.LonLat(resultsarray[0].geometry.x,resultsarray[0].geometry.x).transform(normalproj,mercator);
-                        selectControlNodes.clickFeature(resultsarray[0]);
-                        map.setCenter(thelonlat,9);
-                    
-                    }
-                
-                }
-                loadonce = false;
-            }
-
-            updatetoolbar();
-        });
-*/        
-
-        
-
-    
     
  
 }//ended init here

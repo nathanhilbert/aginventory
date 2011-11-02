@@ -201,35 +201,36 @@ everyone.now.serverNewLayer = function(thequerystring){
   var queryobj = querystring.parse(thequerystring);
   mydb.connect(function(error){if(error){console.log(error);}
 //NEED to verify that this layer name is not being added will do later, since I am adding all of the layers
+		myconnection = this;
 		if (!queryobj['shape']){queryobj['shape']='none';}
-		this.query("INSERT INTO maplayers SET layername='" + queryobj['layertitle'] + "', type='" + queryobj['layertype'] + "', color='" + queryobj['picker'] + "', shape='" + queryobj['shape'] + "', mapid='" + theuserid.now.mapid + "', uid='" + theuserid.now.uid + "'").execute(function(error){if (error){console.log(error);}});
-		this.query("SELECT MAX(layerid) as maxlayerid FROM maplayers").execute(function(error2, rows){
-			if (error2){console.log(error2);}
-			thelayerid = rows[0]['maxlayerid'];
-			console.log("Here is the layerid " + rows[0]['maxlayerid']);
-			mydb.connect(function(error){if(error){console.log(error);}
-				
+		myconnection.query("INSERT INTO maplayers SET layername='" + queryobj['layertitle'] + "', type='" + queryobj['layertype'] + "', color='" + queryobj['picker'] + "', shape='" + queryobj['shape'] + "', mapid='" + theuserid.now.mapid + "', uid='" + theuserid.now.uid + "'").execute(function(error){if (error){console.log(error);}
+			myconnection.query("SELECT MAX(layerid) as maxlayerid FROM maplayers").execute(function(error2, rows){
+				if (error2){console.log(error2);}
+				thelayerid = rows[0]['maxlayerid'];
+				//console.log("Here is the layerid " + rows[0]['maxlayerid']);
+				console.log(queryobj['menuattributes']);
 				var thestring = queryobj['menuattributes'].replace(/\\/g,'');
-				//console.log(thestring);
+				console.log(thestring);
 				var attributeobj = JSON.parse(thestring);
-				//console.log(util.inspect(attributeobj));
+				console.log(util.inspect(attributeobj));
 				for (thekey in attributeobj){
 					//var stringed = JSON.stringify(attributeobj[thekey]);
 					//console.log(stringed);
 					if (!attributeobj[thekey]['options']) {attributeobj[thekey]['options'] = "none";}
 					if (!attributeobj[thekey]['rows']) {attributeobj[thekey]['rows'] = "none";}
 					if (!attributeobj[thekey]['required']) {attributeobj[thekey]['required'] = "false";}
-					execstring = "INSERT INTO mapatts SET name='" + thekey + "', type='" + attributeobj[thekey]['type'] + "', rows='"+ attributeobj[thekey]['rows'] + "', options='" + querystring.stringify(attributeobj[thekey]['options']) + "', required='" + attributeobj[thekey]['required'] + "', layerid=" + thelayerid;
+					if (!attributeobj[thekey]['label']) {attributeobj[thekey]['label'] = "";}
+					execstring = "INSERT INTO mapatts SET label='" + attributeobj[thekey]['label'] + "', name='" + thekey + "', type='" + attributeobj[thekey]['type'] + "', rows='"+ attributeobj[thekey]['rows'] + "', options='" + JSON.stringify(attributeobj[thekey]['options']) + "', required='" + attributeobj[thekey]['required'] + "', layerid=" + thelayerid;
 					console.log(execstring);
-					this.query(execstring).execute(function(error){if(error){console.log(error);}});
+					myconnection.query(execstring).execute(function(error){if(error){console.log(error);}});
 				}
+				sendback = {'layerid':thelayerid, 'layertitle': queryobj['layertitle'], 'layertype':queryobj['layertype'], 'shape':queryobj['shape'], 'color': queryobj['picker']};
+				nowjs.getGroup(theuserid.now.mapid).now.clientNewLayer(JSON.stringify(sendback));
 			});
 		});
 	}); 
 
-//need to add this to the database
-	sendback = {'layerid':thelayerid, 'layertitle': queryobj['layertitle'], 'layertype':queryobj['layertype'], 'shape':queryobj['shape'], 'color': queryobj['picker']};
-  nowjs.getGroup(this.now.mapid).now.clientNewLayer(JSON.stringify(sendback));
+
 }
 
 
@@ -263,30 +264,38 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 					console.log("here are the attributes " + attributes);
 					var attparse = querystring.parse(attributes);
 					console.log(util.inspect(attparse));
+					attkeys = [];
+
+
 					for (item in attparse){
-						var theattid = 0;
-						console.log(item + " with this " + attparse[item]);
-						theconnection.query("SELECT atid FROM mapatts WHERE name='" + item + "' AND layerid=" + thelayerid).execute(function(error, rows3){
-							if(error){console.log(error);}
-							console.log(util.inspect(rows3));
-							if (rows3.length > 0){ 
-								theattid = rows3[0]['atid'];
-							
-								theconnection.query("INSERT INTO mapattdata SET atid=" + theattid + ", shapeid=" + theshapeid + ", data='" + attparse[item] + "'").execute(function(error){
-									if(error){console.log(error);}
-								});
-							}
-						});
-					}	
+						iterkeys(item,attparse[item], theshapeid, thelayerid, theconnection) ;
+					}
 				});
 			});
 		});
 		
 	});
 }
+var iterkeys = function(theitem, thedata, theshapeid, thelayerid, theconnection){
+	theconnection.query("SELECT atid FROM mapatts WHERE name='" + theitem + "' AND layerid=" + thelayerid).execute(function(error, rows3){
+		if(error){console.log(error);}
+		console.log(util.inspect(rows3));
+		console.log(theitem + " with this " + thedata);
+		if (rows3.length > 0){ 
+			var theattid = rows3[0]['atid'];
+			theconnection.query("DELETE FROM mapattdata WHERE atid=" + theattid + " AND shapeid=" + theshapeid).execute(function(error){
+				if(error){console.log(error);}
 
-var defaultAttributes = '{ "title": {"label":"Title", "required": true, "type":"textfield"}, "description":{"label":"", "type": "textarea", "required":true, "rows":6}, "moreoptions":{"label":"Something", "type":"select", "options":{"option1":"option1", "option2":"option2"}}}';
-//var defaultAttributes = '{"title":"something"}';
+		
+				theconnection.query("INSERT INTO mapattdata SET atid=" + theattid + ", shapeid=" + theshapeid + ", data='" + thedata + "'").execute(function(error){
+					if(error){console.log(error);}
+				});
+			});
+		}
+	});
+}
+
+
 
 everyone.now.serverDeleteFeature = function(delobj){
 	shapeid = delobj['shapeid'];
@@ -323,58 +332,151 @@ everyone.now.serverModifyFeature = function(thejson){
 	});
 }
 
-everyone.now.serverGetAttributeForm = function(){
+everyone.now.serverGetAttributes = function(shapeid, layer){
+	theuserid = this;
+	mydb.connect(function(error){if (error){console.log(error)}
+		myconnection = this;
+
+		var query1 = "SELECT mapattdata.data, mapatts.label  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=" + shapeid + " AND mapid='" + theuserid.now.mapid + "' AND maplayers.layername='" + layer + "'";
+		console.log(query1);
+		myconnection.query(query1).execute(function(error, rows){if(error){console.log(error);}
+			thehtml = "";
+			for (var y =0; y<rows.length; y++){
+				if (rows[y]['label'] != ""){
+					thehtml += "<strong>" + rows[y]['label'] + " :</strong>";
+				}
+				thehtml += rows[y]['data'] +"<br/>";
+			}
+			
+			theuserid.now.clientGetAttributes(thehtml);
+		});
+	});
+
+}
+
+
+everyone.now.serverUpdateAttributes = function(attributes, shapeid, layername){
+	theuserid = this;
+	mydb.connect(function(error){if (error){console.log(error)}
+		theconnection = this;
+	
+		theconnection.query("SELECT layerid FROM maplayers WHERE layername='" + layername + "' LIMIT 1").execute(function(error2,rows2){
+			if(error2){console.log(error2);}
+			thelayerid = rows2[0]['layerid'];
+		
+	//starting the attributes of the data
+			console.log("here are the attributes " + attributes);
+			var attparse = querystring.parse(attributes);
+			console.log(util.inspect(attparse));
+			attkeys = [];
+
+
+			for (item in attparse){
+				iterkeys(item,attparse[item], shapeid, thelayerid, theconnection) ;
+			}
+		});
+	});
+
+}
+
+//var defaultAttributes = '{ "title": {"label":"Title", "required": true, "type":"textfield"}, "description":{"label":"", "type": "textarea", "required":true, "rows":6}, "moreoptions":{"label":"Something", "type":"select", "options":{"option1":"option1", "option2":"option2"}}}';
+//var defaultAttributes = '{"title":"something"}';
+
+everyone.now.serverGetAttributeForm = function(layername, shapeid){
   var thehtml = "<form action='#' id='attributeForm'>";
-  console.log(defaultAttributes);
-  var formObj = JSON.parse(defaultAttributes);
+  var formObj = {};
+	theuserid = this;
   //var utils = require('util');
   //console.log(utils.inspect(formObj));
-  for (item in formObj){
-    //console.log(utils.inspect(formObj[item]));
-    var workingobj = formObj[item];
-    if (formObj[item]['label'] != '' || formObj[item]['label'] != null){
-      thehtml += formObj[item]['label'];
-    }
-    if (workingobj['type'] == 'textarea'){
-      thehtml += "<textarea id='" + item + "' name='" + item + "' ";
-      if (workingobj['rows']){thehtml += "rows='" + workingobj['rows'] + " ";}
-      if (workingobj['required'] == true){
-			thehtml += "class='validate[required]'"
-      }
-      thehtml += "></textarea>"
-    }
-    else if (workingobj['type'] == 'select'){
-      thehtml += "<select id='" + item + "' name='" + item + "' ";
-      if (workingobj['required'] == true){
-        thehtml = " class='validate[required]'>";
-      }
-      for (selectobj in workingobj['options']){
-	thehtml += "<option value='" + selectobj + "'>" + workingobj['options'][selectobj] + "</option>";
-      } 
-      thehtml += "</select>";
-    }
-    else { //(workingobj['type'] == 'textfield'){
-      thehtml += "<input id='" + item + "' name='" + item + "'type='text' ";
-      if (workingobj['required'] == true){
-	thehtml += "class='validate[required]'";
-      }
-      thehtml += "/>";
-    }
-/*
-    else if (workingobj['type'] == 'checkboxes'){
-      for (selectobj in workingobj['options']){
-        thehtml += "<input type='checkbox' id='" + item + "' name='" + item + "' ";
-        //no required becuase nothing is required for checkboxes
-	thehtml += "value='" + selectobj + "'/>" + workingobj['options'][selectobj] + "<br/>";
-      }
-    }
-*/
-    thehtml += "<br/>";
-  }
-  thehtml += "<input type='submit' value='Save'/></form>";
-  this.now.clientGetAttributeForm(thehtml);
-  return;
+	mydb.connect(function(error){if (error){console.log(error)}
+		myconnection = this;
+		myconnection.query("SELECT mapatts.label, mapatts.name, mapatts.type, mapatts.rows, mapatts.required, mapatts.options FROM mapatts LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE maplayers.layername='" + layername + "' AND maplayers.mapid='" + theuserid.now.mapid + "'").execute(function(error, rows){
+			if(error){console.log(error)}
+			for (var u=0; u<rows.length; u++){
+				formObj[rows[u]['name']] = {'label':rows[u]['label'], 'type':rows[u]['type'], 'rows':rows[u]['rows'], 'required':rows[u]['required'], 'options':rows[u]['options']};
+			}
 
+
+		var createHTML = function(formObj, theuserid, shapeid){
+				  for (item in formObj){
+				    //console.log(utils.inspect(formObj[item]));
+				    var workingobj = formObj[item];
+				    if (formObj[item]['label'] != '' || formObj[item]['label'] != null){
+				      thehtml += formObj[item]['label'];
+						thehtml += "<br/>";
+				    }
+				    if (workingobj['type'] == 'textarea'){
+				      thehtml += "<textarea id='" + item + "' name='" + item + "' ";
+				      if (workingobj['rows']){thehtml += "rows='" + workingobj['rows'] + " ";}
+				      if (workingobj['required'] == "true"){
+							thehtml += "class='validate[required]'"
+				      }
+				      thehtml += ">"
+						if(workingobj['value']){
+							thehtml += workingobj['value'];
+						}
+						thehtml += "</textarea>"
+				    }
+				    else if (workingobj['type'] == 'select'){
+				      thehtml += "<select id='" + item + "' name='" + item + "' ";
+				      if (workingobj['required'] == "true"){
+				        thehtml = " class='validate[required]'";
+				      }
+						if(workingobj['value']){
+							thehtml += " value='" + workingobj['value'] + "' ";
+						}
+						thehtml += ">";
+						console.log(workingobj['options']);
+						optionsobj = JSON.parse(workingobj['options']);
+				      for (selectobj in optionsobj){
+							console.log("adding <option value='" + selectobj + "'>" + optionsobj[selectobj] + "</option>");
+							thehtml += "<option value='" + selectobj + "'>" + optionsobj[selectobj] + "</option>";
+				      } 
+				      thehtml += "</select>";
+				    }
+				    else { //(workingobj['type'] == 'textfield'){
+				      thehtml += "<input id='" + item + "' name='" + item + "'type='text' ";
+				      if (workingobj['required'] == "true"){
+							thehtml += "class='validate[required]'";
+				      }
+						if(workingobj['value']){
+							thehtml += " value='" + workingobj['value'] + "' ";
+						}
+				      thehtml += "/>";
+				    }
+				/*
+				    else if (workingobj['type'] == 'checkboxes'){
+				      for (selectobj in workingobj['options']){
+				        thehtml += "<input type='checkbox' id='" + item + "' name='" + item + "' ";
+				        //no required becuase nothing is required for checkboxes
+					thehtml += "value='" + selectobj + "'/>" + workingobj['options'][selectobj] + "<br/>";
+				      }
+				    }
+				*/
+				    thehtml += "<br/>";
+				  }
+				  thehtml += "<input type='submit' value='Save'/></form>";
+				  theuserid.now.clientGetAttributeForm(thehtml, shapeid);
+		}
+
+			if (shapeid){
+				console.log("doing the shapeid with " + shapeid);
+				var query1 = "SELECT mapattdata.data, mapatts.name  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=" + shapeid + " AND mapid='" + theuserid.now.mapid + "' AND maplayers.layername='" + layername + "'";
+				myconnection.query(query1).execute(function(error, rows2){
+					if(error){console.log(error);}
+					for (var t =0; t<rows.length; t++){
+						formObj[rows2[t]['name']]['value'] = rows2[t]['data'];
+					}
+					createHTML(formObj, theuserid, shapeid);
+				});
+			}
+			else{
+				createHTML(formObj, theuserid);
+			}
+
+
+		});
+	});
 }
 
 // Only listen on $ node app.js
