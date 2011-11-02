@@ -32,9 +32,9 @@ app.configure('production', function(){
 
 var mysql = require('db-mysql');
 mydb = new mysql.Database({
-	hostname: '192.168.56.1',
-   user: 'drupal',
-	password: '1Password',
+	hostname: 'localhost',
+   	user: 'root',
+	password: 'Ti4yM2si',
 	database: 'aginven'
 })
 
@@ -147,11 +147,40 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 		});
 	});
 }
+/*
+
+	sendback = {'layerid':thelayerid, 'layertitle': queryobj['layertitle'], 'layertype':queryobj['layertype'], 'shape':queryobj['shape'], 'color': queryobj['picker']};
+  nowjs.getGroup(this.now.mapid).now.clientNewLayer(JSON.stringify(sendback));
+*/
 
 everyone.now.populateMap = function(mapid){
 //calls one function for each of the layers that are part of this map with the JSON encoded data
-//could maybe user jquery progress bar here
-return;
+//could maybe user jquery progress bar here.
+	var theuserid = this;
+	mydb.connect(function(error){if (error){console.log(error)}
+		var myconnection = this;
+		myconnection.query("SELECT layerid, layername, type, color, shape FROM maplayers WHERE mapid='" + theuserid.now.mapid + "'").execute(function(error, rows){
+			if(error){console.log(error);}
+			for (var x=0;x<rows.length;x++){
+				var thesend = {'layerid':rows[x]['layerid'], 'layertitle':rows[x]['layername'], 'layertype':rows[x]['type'],'shape':rows[x]['shape'],  'color':rows[x]['color']};
+				theuserid.now.clientNewLayer(JSON.stringify(thesend));
+//now adding the features for each
+				myconnection.query("SELECT data, shapeid FROM mapdata WHERE layerid=" + rows[x]['layerid']).execute(function(error, datarows){
+					if (error){console.log(error);}
+					datasend = [];
+					for (var i =0;i< datarows.length;i++){
+						var newobj = JSON.parse(datarows[i]['data']);
+						newobj['properties']['shapeid'] = datarows[i]['shapeid'];
+						datasend.push(newobj);
+					}
+					theuserid.now.clientAddFeature(datasend);
+				});
+			}
+			theuserid.now.clientFinishPopulate();
+		});
+	});
+	
+//takes straight up geoJson that is stored in database
 
 }
 
@@ -207,47 +236,91 @@ everyone.now.serverNewLayer = function(thequerystring){
 
 everyone.now.serverAddFeature = function(thejson, attributes){
 	var geoparse = JSON.parse(thejson);
-	console.log(geoparse['properties']['layer'] + " with the mapid " + this.now.mapid);
+	//console.log(geoparse['properties']['layer'] + " with the mapid " + this.now.mapid);
 	var theuserid = this;
 	mydb.connect(function(error){if (error){console.log(error)}
+		var theconnection = this;
 		var thelayerid = null;
-		this.query("SELECT layerid FROM maplayers WHERE layername='" + geoparse['properties']['layer'] + "' AND mapid='" + theuserid.now.mapid + "' LIMIT 1").execute(function(error, rows){if(error){console.log(error);}
+		var query1 = "SELECT layerid FROM maplayers WHERE layername='" + geoparse['properties']['layer'] + "' AND mapid='" + theuserid.now.mapid + "' LIMIT 1";
+		console.log("Here is query1 " + query1);
+		theconnection.query(query1).execute(function(theerror, rows){
+			if(theerror){console.log(theerror);}
+			//console.log(util.inspect(rows));
+			console.log("here is the layer id " + rows[0]['layerid']);
 			thelayerid = rows[0]['layerid'];
-		});
-		this.query("INSERT INTO mapdata SET data='" + thejson + "', layerid=" + thelayerid).execute(function(error3){if (error3){console.log(error3);}});
-		var theshapeid = 0;
-		this.query("SELECT MAX(shapeid) as maxshape FROM mapdata").execute(function(error2,rows2){
-			if(error2){console.log(error2);}
-			theshapeid = rows2[0]['maxshape'];
-		});
-		console.log("here are the attributes " + attributes);
-		var attparse = querystring.parse(attributes);
-		console.log(util.inspect(attparse));
-		for (item in attparse){
-			var theattid = 0;
-			console.log(item + " with this " + attparse[item]);
-			this.query("SELECT atid FROM mapatts WHERE name='" + item + "' AND layerid=" + thelayerid).execute(function(error, rows3){
-				if(error){console.log(error);}
-				theattid = rows3[0]['atid'];
+		
+			var query2 = "INSERT INTO mapdata SET data='" + thejson + "', layerid=" + thelayerid;
+			console.log("Here is query1 " + query2);
+			theconnection.query(query2).execute(function(error3){if (error3){console.log(error3);}
+				var theshapeid = 0;
+				theconnection.query("SELECT MAX(shapeid) as maxshape FROM mapdata").execute(function(error2,rows2){
+					if(error2){console.log(error2);}
+					theshapeid = rows2[0]['maxshape'];
+					geoparse['properties']['shapeid'] = theshapeid;
+					nowjs.getGroup(theuserid.now.mapid).now.clientAddFeature(geoparse);
+				
+//starting the attributes of the data
+					console.log("here are the attributes " + attributes);
+					var attparse = querystring.parse(attributes);
+					console.log(util.inspect(attparse));
+					for (item in attparse){
+						var theattid = 0;
+						console.log(item + " with this " + attparse[item]);
+						theconnection.query("SELECT atid FROM mapatts WHERE name='" + item + "' AND layerid=" + thelayerid).execute(function(error, rows3){
+							if(error){console.log(error);}
+							console.log(util.inspect(rows3));
+							if (rows3.length > 0){ 
+								theattid = rows3[0]['atid'];
+							
+								theconnection.query("INSERT INTO mapattdata SET atid=" + theattid + ", shapeid=" + theshapeid + ", data='" + attparse[item] + "'").execute(function(error){
+									if(error){console.log(error);}
+								});
+							}
+						});
+					}	
+				});
 			});
-			this.query("INSERT INTO mapattdata SET atid=" + theattid + ", shapeid=" + theshapeid + ", data='" + attparse[item] + "'").execute(function(error){
-				console.log(error);
-			});
-		}
-		nowjs.getGroup(theuserid.now.mapid).now.clientAddFeature(thejson);
+		});
+		
 	});
 }
 
-var defaultAttributes = '{ "title": {"label":"Title", "required": true, "type":"textfield"}, "description":{"label":"", "type": "textarea", "required":true, "rows":6}, "moreoptions":{"label":"Something", "type":"select", "options":{"option1":"option1", "option2":"option2"}}, "checkboxes": {"required":true, "type": "checkboxes", "options":{"option1":"option1", "option2":"option2"}}}';
+var defaultAttributes = '{ "title": {"label":"Title", "required": true, "type":"textfield"}, "description":{"label":"", "type": "textarea", "required":true, "rows":6}, "moreoptions":{"label":"Something", "type":"select", "options":{"option1":"option1", "option2":"option2"}}}';
 //var defaultAttributes = '{"title":"something"}';
 
-everyone.now.serverDeleteFeature = function(json){
-  everyone.now.clientDeleteFeature(json);
-  return;
+everyone.now.serverDeleteFeature = function(delobj){
+	shapeid = delobj['shapeid'];
+	console.log("here is the shape id for deleting " + shapeid);
+	theuserid = this;
+	mydb.connect(function(error){if (error){console.log(error)}
+		myconnection = this;
+		myconnection.query("DELETE FROM mapdata WHERE shapeid=" + shapeid).execute(function(error){if(error){console.log(error);}});
+		myconnection.query("DELETE FROM mapattdata WHERE shapeid=" + shapeid).execute(function(error){if(error){console.log(error);}});
+		nowjs.getGroup(theuserid.now.mapid).now.clientDeleteFeature(delobj);
+	});
 }
-everyone.now.serverModifyFeature = function(json){
-  everyone.now.clientModifyFeature(json);
-  return;
+everyone.now.serverModifyFeature = function(thejson){
+	var featureobj = JSON.parse(thejson);
+	var shapeid = featureobj['properties']['shapeid'];
+	console.log("here is the shape id for modifying " + shapeid);
+	theuserid = this;
+	mydb.connect(function(error){if (error){console.log(error)}
+		myconnection = this;
+
+		var query1 = "SELECT layerid FROM maplayers WHERE layername='" + featureobj['properties']['layer'] + "' AND mapid='" + theuserid.now.mapid + "' LIMIT 1";
+		myconnection.query(query1).execute(function(error, rows){if(error){console.log(error);}
+			if (rows.length >0){
+				myconnection.query("UPDATE mapdata SET data='" + thejson + "' WHERE layerid=" + rows[0]['layerid'] + " AND shapeid=" + shapeid).execute(function(error){
+					if(error){console.log(error);}
+				});
+			}
+			else {
+				console.log("there was an error in finding the layerid");
+			}
+		});
+
+		nowjs.getGroup(theuserid.now.mapid).now.clientModifyFeature(featureobj);
+	});
 }
 
 everyone.now.serverGetAttributeForm = function(){
@@ -262,20 +335,13 @@ everyone.now.serverGetAttributeForm = function(){
     if (formObj[item]['label'] != '' || formObj[item]['label'] != null){
       thehtml += formObj[item]['label'];
     }
-    if (workingobj['type'] == 'textfield'){
-      thehtml += "<input id='" + item + "' name='" + item + "'type='text' ";
-      if (workingobj['required'] == true){
-	thehtml += "class='validate[required]'";
-      }
-      thehtml += "/>";
-    }
-    else if (workingobj['type'] == 'textarea'){
+    if (workingobj['type'] == 'textarea'){
       thehtml += "<textarea id='" + item + "' name='" + item + "' ";
       if (workingobj['rows']){thehtml += "rows='" + workingobj['rows'] + " ";}
       if (workingobj['required'] == true){
-	thehtml += "class='validate[required]'"
+			thehtml += "class='validate[required]'"
       }
-      thehtml += "</textarea>"
+      thehtml += "></textarea>"
     }
     else if (workingobj['type'] == 'select'){
       thehtml += "<select id='" + item + "' name='" + item + "' ";
@@ -287,6 +353,14 @@ everyone.now.serverGetAttributeForm = function(){
       } 
       thehtml += "</select>";
     }
+    else { //(workingobj['type'] == 'textfield'){
+      thehtml += "<input id='" + item + "' name='" + item + "'type='text' ";
+      if (workingobj['required'] == true){
+	thehtml += "class='validate[required]'";
+      }
+      thehtml += "/>";
+    }
+/*
     else if (workingobj['type'] == 'checkboxes'){
       for (selectobj in workingobj['options']){
         thehtml += "<input type='checkbox' id='" + item + "' name='" + item + "' ";
@@ -294,6 +368,7 @@ everyone.now.serverGetAttributeForm = function(){
 	thehtml += "value='" + selectobj + "'/>" + workingobj['options'][selectobj] + "<br/>";
       }
     }
+*/
     thehtml += "<br/>";
   }
   thehtml += "<input type='submit' value='Save'/></form>";

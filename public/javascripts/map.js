@@ -416,16 +416,28 @@ var clearActiveControls = function(){
 }
 
 now.clientAddFeature = function(thejson){
-console.log("here is the feature that was recieved : " + thejson);
-  var thefeature = new OpenLayers.Format.GeoJSON().read(thejson, "Feature");
+  	if(Array.isArray(thejson)){
+		thelayer = null;
+		console.log("running the array version");
+		for(var x =0; x<thejson.length; x++){
+			
+			var thefeature = new OpenLayers.Format.GeoJSON().read(thejson[x], "Feature");
+			if (!thelayer){
+				thelayer = map.getLayersByName(thefeature.attributes['layer'])[0]
+			}
+			thelayer.addFeatures(thefeature);
+		}
+	}
+	else {
+
+  		var thefeature = new OpenLayers.Format.GeoJSON().read(thejson, "Feature");
+		map.getLayersByName(thefeature.attributes['layer'])[0].addFeatures(thefeature);
+	}
   
   //var jsonobj = $.parseJSON(thejson);
   //console.log(jsonobj['layer']);
   //var thefeatures = new OpenLayers.Format.WKT().read(jsonobj['feature']);
-  console.log(thefeature.attributes['layer']);
-  map.getLayersByName(thefeature.attributes['layer'])[0].addFeatures(thefeature);
-  return;
-
+  //console.log(thefeature.attributes['layer']);
 
 }
 
@@ -490,20 +502,18 @@ var finishDraw = function(feature){
 
 }
 
-now.clientModifyFeature = function(thejson){
-  console.log("here is the feature that was recieved : " + thejson);
-  
-  var thefeature = new OpenLayers.Format.GeoJSON().read(thejson, "Feature");
-  var workinglayer = map.getLayer(thefeature.attributes['layer']);
-  console.log("working with " + workinglayer.id + " and a length of " + workinglayer.getFeaturesByAttribute('id', thefeature.attributes['id']).length);  
-  workinglayer.removeFeatures(workinglayer.getFeaturesByAttribute('id', thefeature.attributes['id']));
+ 
 
-  //var jsonobj = $.parseJSON(thejson);
-  //console.log(jsonobj['layer']);
-  //var thefeatures = new OpenLayers.Format.WKT().read(jsonobj['feature']);
-  console.log(thefeature.attributes['layer']);
+
+now.clientModifyFeature = function(modobj){
+
+  
+  var thefeature = new OpenLayers.Format.GeoJSON().read(modobj, "Feature");
+  var workinglayer = map.getLayersByName(thefeature.attributes['layer'])[0];
+  console.log("working with " + workinglayer.name + " and a length of " + workinglayer.getFeaturesByAttribute('id', thefeature.attributes['id']).length);  
+  workinglayer.removeFeatures(workinglayer.getFeaturesByAttribute('shapeid', thefeature.attributes['shapeid']));
+
   workinglayer.addFeatures(thefeature);
-  return;
 
 }
 
@@ -516,11 +526,10 @@ var finishModification = function(feature){
 
 }
 
-now.clientDeleteFeature = function(thejson){
-  var jsonobj = $.parseJSON(thejson);
-  console.log("deleting feature from " + jsonobj['layer']);
-  var workinglayer = map.getLayer(jsonobj['layer']);
-  var deletefeatures = workinglayer.getFeaturesByAttribute('id', jsonobj['featureid']);
+now.clientDeleteFeature = function(delobj){
+  console.log("deleting feature from " + delobj['layer']);
+  var workinglayer = map.getLayersByName(delobj['layer'])[0];
+  var deletefeatures = workinglayer.getFeaturesByAttribute('shapeid', delobj['shapeid']);
   console.log("going to delete this many features : " + deletefeatures.length);
   if (deletefeatures.length >0 ){
     for (var x = 0; x<deletefeatures.length; x++){
@@ -531,14 +540,12 @@ now.clientDeleteFeature = function(thejson){
   else {
     console.log("We couldn't find the send, so not deleting");
   }
-  return;
 }
 
 var deleteFeature = function(feature){
-  var encoded = {'layer': activeDrawLayer.id , 'featureid':  feature.attributes.id};
-  encoded = JSON.stringify(encoded);
+  var encoded = {'layer': activeDrawLayer.name , 'shapeid':  feature.attributes.shapeid};
+  //encoded = JSON.stringify(encoded);
   now.serverDeleteFeature(encoded);
-  console.log("now deleting the feature");
 }
 
 
@@ -551,9 +558,9 @@ var startControl = function(action, layerid){
   console.log(activeDrawLayer.geometryType);
   if (action == 'draw'){
     var thehandler = null;
-    if (activeDrawLayer.layertype == "Point"){ thehandler = OpenLayers.Handler.Point;}
-    else if (activeDrawLayer.layertype == "LineString"){ thehandler = OpenLayers.Handler.LineString;}
-    else if (activeDrawLayer.layertype == "Polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
+    if (activeDrawLayer.layertype == "point"){ thehandler = OpenLayers.Handler.Point;}
+    else if (activeDrawLayer.layertype == "connection"){ thehandler = OpenLayers.Handler.LineString;}
+    else if (activeDrawLayer.layertype == "polygon"){ thehandler = OpenLayers.Handler.Polygon;}    
     activeControl = new OpenLayers.Control.DrawFeature(activeDrawLayer, thehandler, {'featureAdded':finishDraw});
   }
   else if (action == 'modify'){
@@ -603,7 +610,7 @@ var menucontrol = function(){
 	    newlayerinfo = $(this).serialize();
 	    
 	    var thehtml = "<form action='#' id='newLayerForm2'>";
-	    if ($("#type").val() == "point"){
+	    if ($("#layertype").val() == "point"){
 	      thehtml += "<input name='symbol' type='radio' value='star'>Star<input name='symbol' type='radio' value='plus'>Plus<input name='symbol' type='radio' value='square'>Square";
 	    }
 	    thehtml += "<input name='picker' id='picker' type='text' value='#123456'/><div id='colorpicker'></div><input type='submit' value='Next'/></form>";
@@ -705,8 +712,10 @@ now.clientNewLayer = function(thejson){
 	//layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
 	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
 		protocol: new OpenLayers.Protocol({format: new OpenLayers.Format.GeoJSON()})});
-   newlayer.layertype = layerinfo['layertype'];
+   	newlayer['layertype'] = layerinfo['layertype'];
+		newlayer['layerid'] = layerinfo['layerid'];
 	map.addLayers([newlayer]);
+	console.log("Adding a new layer with the layertype of " + newlayer.layertype);
 
 }
                 
@@ -731,9 +740,24 @@ $(document).ready(function(){
 
 
 
-                
+now.clientFinishPopulate = function(){
+	//can be used in the future for the jquery loader
+	var t = setTimeout("startControls();", 1000);
+
+}        
+
+var onFeatureSelectNodes = function(feature){
 
 
+}
+
+var startControls = function(){
+
+	activeControl = new OpenLayers.Control.SelectFeature(node_layer, {multiple:false, clickout:true, onSelect:onFeatureSelectNodes, onUnselect: onFeatureUnSelectNodes, hover:false});
+   map.addControl(activeControl);
+   activeControl.activate();
+	map.updateSize();
+}
 
 
 
@@ -1000,6 +1024,9 @@ STILL NEED TO DO THE HOVER IT CHANGES THE FEATURE RENDER INTENT WHICH WAS CAUSIN
 	  var foo = $("<span>").html(popupmessage);
 	  $(foo).dialog({autoOpen:true});
 	}
+
+	now.populateMap();
+	
 	
 
 //I think this only happens once as long as it isnt destroyed and reloaded
