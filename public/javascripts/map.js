@@ -851,16 +851,31 @@ var initfunction =function(){
 
 
 //top menu init
-	var themenu = $("<div>").addClass("topmenu ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress'>Search By Address</span>");
+	var themenu = $("<div>").addClass("topmenu menubutton ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress' class='menubutton'>Search By Address</span><span id='statusWindowMenu' class='menubutton active'>Status Window</span>");
    $("#popupholder").append(themenu);
 
 	$("#searchbyaddress").click(searchByAddress);
+	$("#statusWindowMenu").click(function(){
+		if($("#statusWindowMenu").hasClass("active")){
+			$("#statusWindowMenu").removeClass("active");
+			$("#statuswindow").dialog("close");
+		}
+		else {
+			$("#statusWindowMenu").addClass("active");
+			$("#statuswindow").dialog({autoOpen:true, position:['left', 'bottom'], resizable:false, title:"Status Window"});
+		}
+
+	});
 
 	var themenu = $("<div>").attr('id', 'bottomwrapper').html("<div id=bottomslider></div><span id='sliderresult'></span>");
    $("#popupholder").append(themenu);
    $("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"Time Scale"});
    
    setupDateSlider();
+
+	var statusdiv = $("<div>").attr('id', 'statuswindow').html("<div id='statuswindowContent'></div>");
+   $("#popupholder").append(statusdiv);
+	$("#statuswindow").dialog({autoOpen:true, position:['left', 'bottom'], resizable:false, title:"Status Window"});
 
         
         selectedFeatures = [];

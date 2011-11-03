@@ -41,6 +41,11 @@ body {
 	background: url('/OpenLayers/theme/default/img/add_point_off.png') no-repeat 0px 0px;
 }
 
+.menubutton{
+	padding: 10px;
+	cursor:pointer;
+}
+
 
 
 
