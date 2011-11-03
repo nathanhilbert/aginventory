@@ -829,20 +829,32 @@ var searchByAddress = function(e){
       return false;
     }
 	 var theurl = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Locators/ESRI_Geocode_USA/GeocodeServer/findAddressCandidates?Address=" + $("#searchAddress").val() + "&City=" + $("#searchCity").val() + "&State=" + $("#searchState").val()+ "&Zip=" + $("#searchZipcode").val() + "&outFields=&f=json";
+	console.log(theurl);
     $.ajax({
 		type:"GET",
 		url: theurl,
+		dataType: 'jsonp',
+		jsonp: 'callback',
+		jsonpCallback: 'jsonpCallback',
 		success: function(msg){
 
-			console.log("here is messa " + msg);
+			console.log("successful ajax call");
 			
 		}
 	 });
     return false;
   });
-
-
 }
+
+
+var jsonpCallback = function(data){
+	console.log(data.candidates);
+	if (data.candidates.length >0){
+  		var lonlat = new OpenLayers.LonLat(data.candidates[0]['location']['x'], data.candidates[0]['location']['y']).transform(normalproj, mercator);
+		map.panTo(lonlat);
+	}
+}
+
 
 
 var initfunction =function(){
