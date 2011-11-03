@@ -851,7 +851,7 @@ var initfunction =function(){
 
 
 //top menu init
-	var themenu = $("<div>").addClass("topmenu menubutton ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress' class='menubutton'>Search By Address</span><span id='statusWindowMenu' class='menubutton active'>Status Window</span>");
+	var themenu = $("<div>").addClass("topmenu menubutton ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress' class='menubutton'>Search By Address</span><span id='statusWindowMenu' class='menubutton active'>Status Window</span><span id='timeScaleMenu' class='menubutton active'>Time Scale</span>");
    $("#popupholder").append(themenu);
 
 	$("#searchbyaddress").click(searchByAddress);
@@ -864,7 +864,17 @@ var initfunction =function(){
 			$("#statusWindowMenu").addClass("active");
 			$("#statuswindow").dialog({autoOpen:true, position:['left', 'bottom'], resizable:false, title:"Status Window"});
 		}
+	});
 
+	$("#timeScaleMenu").click(function(){
+		if($("#timeScaleMenu").hasClass("active")){
+			$("#timeScaleMenu").removeClass("active");
+			$("#bottomwrapper").dialog("close");
+		}
+		else {
+			$("#timeScaleMenu").addClass("active");
+			$("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"Time Scale"});
+		}
 	});
 
 	var themenu = $("<div>").attr('id', 'bottomwrapper').html("<div id=bottomslider></div><span id='sliderresult'></span>");
