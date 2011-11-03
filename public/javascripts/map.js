@@ -153,17 +153,19 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 //****************************STYLIZE FUNCTIONS ********************************************************
 
     
-    var stylize_nodes = function(){
+    var stylize = function(){
         
         var nodestylertemp = OpenLayers.Util.applyDefaults({
                  strokeWidth: 1.5,
-                 strokeColor: "#FAF334",
+                 strokeColor: "${color}",
                  strokeOpacity:.9,
-                 fillColor: "#FAF334",
+                 fillColor: "${color}",
                  fillOpacity: .4,
                  cursor: "pointer",
                  pointRadius: 7,
-                 display:""
+                 display:"",
+					  //graphicName: "${graphic}",
+					  //label: "${thelabel}"
              }, OpenLayers.Feature.Vector.style['temporary']);
         var nodestylerselect = OpenLayers.Util.applyDefaults({
                  strokeWidth: 1.5,
@@ -173,18 +175,22 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
                  fillOpacity: .4,
                  cursor: "pointer",
                  pointRadius: 7,
-                 display:""
+                 display:"",
+					  //graphicName: "${graphic}",
+					  //label: "${thelabel}"
              }, OpenLayers.Feature.Vector.style['select']);
                           
         var thestyle = new OpenLayers.Style({
                  strokeWidth: 1,
-                 strokeColor: "${categorycolor}",
-                 fillColor: "${categorycolor}",
+                 strokeColor: "${color}",
+                 fillColor: "${color}",
                  strokeOpacity:1,
                  fillOpacity: .9,
                  cursor: "pointer",
                  pointRadius: 7,
-                 display:""
+                 display:"",
+					  //graphicName: "${graphic}",
+					  //label: "${thelabel}"
              });
 
 
@@ -195,60 +201,6 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 
 
 
-    var stylize_edges = function(){
-    
-            
-          var nodestyler = OpenLayers.Util.applyDefaults({
-                 strokeWidth: 1.5,
-                 strokeColor: "${thestrokecolor}",
-                 rotation : "${angle}",
-                 fillOpacity: 0.7,
-                 graphicName:"arrow",
-                 pointRadius: 3,
-                 fillColor: "${thestrokecolor}",
-                 strokeOpacity:1,
-                 display: ""
-             }, OpenLayers.Feature.Vector.style['default']);
-        var nodestylertemp = OpenLayers.Util.applyDefaults({
-                 strokeWidth: 1.5,
-                 strokeColor: "${thestrokecolor}",
-                 rotation : "${angle}",
-                 fillOpacity: 0.7,
-                 graphicName:"arrow",
-                 pointRadius: 3,
-                 fillColor: "${thestrokecolor}",
-                 strokeOpacity:1,
-                 display: ""
-             }, OpenLayers.Feature.Vector.style['temporary']);
-        var nodestylerselect = OpenLayers.Util.applyDefaults({
-                 strokeWidth: 1.5,
-                 strokeColor: "${thestrokecolor}",
-                 rotation : "${angle}",
-                 fillOpacity: 0.7,
-                 graphicName:"arrow",
-                 pointRadius: 3,
-                 fillColor: "${thestrokecolor}",
-                 strokeOpacity:1,
-                 display: ""
-             }, OpenLayers.Feature.Vector.style['select']);
-                          
-        var thestyle = new OpenLayers.Style({
-                 strokeWidth: 1.5,
-                 strokeColor: "${thestrokecolor}",
-                 rotation : "${angle}",
-                 fillOpacity: 0.7,
-                 graphicName:"arrow",
-                 pointRadius: 3,
-                 fillColor: "${thestrokecolor}",
-                 strokeOpacity:1,
-                 display: ""
-             });
-
-
-
-        return new OpenLayers.StyleMap({'default':thestyle, 'select':nodestylerselect, 'temporary':nodestylertemp}); 
-
-    }
     //symbolizer: {graphicName:"arrow",rotation : "${angle}", fillOpacity: 0.7, fillColor: "#7CFC00",  strokeColor: "#7CFC00"}
     
     
@@ -568,11 +520,11 @@ var deleteFeature = function(feature){
 
 //
 // Still need to figure out the handler.  I just need to add it with the layer.
-var startControl = function(action, layerid){
+var startControl = function(action, layername){
   clearActiveControls(); 
-  console.log("here is the layerid in the modify tool: " + layerid);
-  activeDrawLayer = map.getLayer(layerid);
-  console.log(activeDrawLayer.geometryType);
+  console.log("here is the layername  in the tool: " + layername);
+  activeDrawLayer = map.getLayersByName(layername)[0];
+  console.log(activeDrawLayer.name);
   if (action == 'draw'){
     var thehandler = null;
     if (activeDrawLayer.layertype == "connection"){ thehandler = OpenLayers.Handler.Path;}
@@ -587,13 +539,9 @@ console.log("starting up the modify control");
   else if (action == 'erase'){
     activeControl = new OpenLayers.Control.SelectFeature(activeDrawLayer, {'onSelect':deleteFeature});
   }
-  else {
-    //need to add a default select features
-    return;
-  }
   map.addControl(activeControl);
   activeControl.activate();
-	layerswitcher.redraw();
+	appendLayerMenu();
 
 
 
@@ -603,13 +551,15 @@ console.log("starting up the modify control");
 
 
 var menucontrol = function(){
+		
+
 	  if ($("#newLayerForm").length == 0){
 		var thediv = $("<div>").attr('id', "newLayerForm");
 		$("#popupholder").append(thediv);
 	   }
  		var newlayerinfo = "";
 
-	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[required]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Picture of point<input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Picture of connection<input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Picture of polygon<br/><input type='submit' value='Next'></form>");
+	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[required]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Point<br/><input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Connection<br/><input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Polygon<br/><input type='submit' value='Next'></form>");
           //$("#newLayerForm1").validationEngine("attach");
 		  
 	 
@@ -622,15 +572,15 @@ var menucontrol = function(){
 	    //entry and it is propogated to everyone else this will create two layers with the same name
  	    console.log("the number of layers with this name: " + map.getLayersByName($("#layertitle").val()).length);
 	    if (map.getLayersByName($("#layertitle").val()).length > 0){
-	      $("#layertitle").validationEngine('showPromit', 'There is already a layer with that name', 'load');
+	      $("#layertitle").validationEngine('showPrompt', 'There is already a layer with that name', 'load');
 	      return false;
 	    }
 
 	    newlayerinfo = $(this).serialize();
 	    
 	    var thehtml = "<form action='#' id='newLayerForm2'>";
-	    if ($("#layertype").val() == "point"){
-	      thehtml += "<input name='symbol' type='radio' value='star'>Star<input name='symbol' type='radio' value='plus'>Plus<input name='symbol' type='radio' value='square'>Square";
+	    if ($("#layertype:checked").val() == "point"){
+	      thehtml += "<input name='symbol' type='radio' value='circle'>Circle<br/><input name='symbol' type='radio' value='square'>Square<br/><input name='symbol' type='radio' value='star'>Star<br/><input name='symbol' type='radio' value='cross'>Cross<br/><input name='symbol' type='radio' value='triangle'>Triangle<br/>";
 	    }
 	    thehtml += "<input name='picker' id='picker' type='text' value='#123456'/><div id='colorpicker'></div><input type='submit' value='Next'/></form>";
 	    $("#newLayerForm").html(thehtml);
@@ -653,6 +603,8 @@ var menucontrol = function(){
 	 
 	}
 var appendLayerMenu = function(){
+	$(".dropdownmenu").remove();
+	$(".drawimage").remove();
   $(".dataLayersDiv").children(".labelSpan").each( function(){
     var child = $(this);
     var thelayer = map.getLayersByName(child.html());
@@ -663,9 +615,9 @@ var appendLayerMenu = function(){
       ident = ident.replace(/\./g, '-');
       //var thehtml = "<ul><li><a href='#'>Dropdown</a></li></ul>";
       var thehtml = "<ul>\
-			<li><a href='javascript:startControl(\"draw\",\"" + olid + "\");'>Add</a></li>\
-			<li><a href='javascript:startControl(\"modify\",\"" + olid + "\");'>Modify</a></li>\
-			<li><a href='javascript:startControl(\"erase\",\"" + olid + "\");'>Erase</a></li>\
+			<li><a href='javascript:startControl(\"draw\",\"" + thelayername + "\");'>Add</a></li>\
+			<li><a href='javascript:startControl(\"modify\",\"" + thelayername + "\");'>Modify</a></li>\
+			<li><a href='javascript:startControl(\"erase\",\"" + thelayername + "\");'>Erase</a></li>\
 		</ul>";
       //console.log("adding the new ident " + ident);
       child.before("<span id='" + ident + "' class='dropdownmenu'></span>");
@@ -680,9 +632,9 @@ var appendLayerMenu = function(){
         console.log("now adding the thing to the thing");
       });
 		//now adding the draw stuff
-		if(activeControl){
+		if(activeDrawLayer){
 			console.log("checking " + activeControl.layer.name + " " + thelayer.name  + " and " + activeControl.CLASS_NAME);
-			if (activeControl.layer.name == thelayername && (activeControl.CLASS_NAME == "OpenLayers.Control.DrawFeature" || activeControl.CLASS_NAME == "OpenLayers.Control.ModifyFeature")){
+			if (activeDrawLayer.name == thelayername ){ //&& (activeControl.CLASS_NAME == "OpenLayers.Control.DrawFeature" || activeControl.CLASS_NAME == "OpenLayers.Control.ModifyFeature")
 				console.log("adding the images");
 				$('[name="' + activeDrawLayer.name + '"]:checkbox').before('<span class="drawimage"></span>');
 			}
@@ -691,11 +643,35 @@ var appendLayerMenu = function(){
 
 
   });
+	$(".drawimage").click(function(e){
+
+		clearDrawing();
+	});
 
 
 
 }
 
+
+var clearDrawing= function(){
+	clearActiveControls();
+	if (activePopup){ 
+	    map.removePopup(activePopup);
+	    activePopup = null;
+	}
+	if (tempFeature && activeDrawLayer){
+	  activeDrawLayer.removeFeatures([tempFeature]);
+    tempFeature = null;
+		activeDrawLayer = null;
+	}
+	else if(activeDrawLayer){
+		activeDrawLayer = null;
+	}
+	activeControl = new OpenLayers.Control.SelectFeature(map.getLayersBy('isBaseLayer', false), {multiple:false, clickout:true, onSelect:onFeatureSelectNodes, onUnselect: onFeatureUnSelectNodes, hover:false});
+   map.addControl(activeControl);
+   activeControl.activate();
+
+}
 
 
 
@@ -739,7 +715,7 @@ now.clientCheckUser = function(bool, res, themessage){
 now.clientNewLayer = function(thejson){
 	var layerinfo = $.parseJSON(thejson);
 	//layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
-	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
+	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { styleMap: stylize(), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
 		protocol: new OpenLayers.Protocol({format: new OpenLayers.Format.GeoJSON()})});
    	newlayer['layertype'] = layerinfo['layertype'];
 		newlayer['layerid'] = layerinfo['layerid'];
@@ -833,6 +809,40 @@ var startControls = function(){
 
 
 
+var searchByAddress = function(e){
+	if ($("#addressSearchPopup").length > 0){
+		if ($("#searchbyaddress").hasClass("active")){
+			$(this).removeClass("active");
+			$("#addressSearchPopup").dialog('close');
+			return;
+		}
+		$("#addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' class='validate[required]' type='text'/><br/>City: <input name='searchCity' id='searchCity' class='validate[required]' type='text'/><br/>State: <input name='searchState' id='searchState' class='validate[required]' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' class='validate[required]' type='text'/><input type='submit' value='Search'><br/></form>");
+	}
+	else{
+	  var thediv = $("<div>").attr('id', "addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' class='validate[required]' type='text'/><br/>City: <input name='searchCity' id='searchCity' class='validate[required]' type='text'/><br/>State: <input name='searchState' id='searchState' class='validate[required]' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' class='validate[required]' type='text'/><br/><input type='submit' value='Search'></form>");
+	  $("#popupholder").append(thediv);
+	}
+  $("#addressSearchPopup").dialog({autoOpen:true, title:"Address Search"});
+	$("#searchbyaddress").addClass("active")
+  $("#addressSearchForm").submit(function(){
+    if ($(this).validationEngine("validate") == false){
+      return false;
+    }
+	 var theurl = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Locators/ESRI_Geocode_USA/GeocodeServer/findAddressCandidates?Address=" + $("#searchAddress").val() + "&City=" + $("#searchCity").val() + "&State=" + $("#searchState").val()+ "&Zip=" + $("#searchZipcode").val() + "&outFields=&f=json";
+    $.ajax({
+		type:"GET",
+		url: theurl,
+		success: function(msg){
+
+			console.log("here is messa " + msg);
+			
+		}
+	 });
+    return false;
+  });
+
+
+}
 
 
 var initfunction =function(){
@@ -841,12 +851,14 @@ var initfunction =function(){
 
 
 //top menu init
-	var themenu = $("<div>").addClass("topmenu ui-widget-header").attr('id', 'topmenuwrapper').html("something");
+	var themenu = $("<div>").addClass("topmenu ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress'>Search By Address</span>");
    $("#popupholder").append(themenu);
+
+	$("#searchbyaddress").click(searchByAddress);
 
 	var themenu = $("<div>").attr('id', 'bottomwrapper').html("<div id=bottomslider></div><span id='sliderresult'></span>");
    $("#popupholder").append(themenu);
-   $("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"something"});
+   $("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"Time Scale"});
    
    setupDateSlider();
 
@@ -875,14 +887,22 @@ var initfunction =function(){
              
     		});	
 		
-		googlelayer = new OpenLayers.Layer.Google(
-		  "Good Physical",
+		googleStreet = new OpenLayers.Layer.Google(
+		  "Street Map",
           {MIN_ZOOM_LEVEL: 7, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.45, isBaseLayer:true}
+        );
+		googleTerrain = new OpenLayers.Layer.Google(
+		  "Terrain",
+          {MIN_ZOOM_LEVEL: 7, type: google.maps.MapTypeId.TERRAIN, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.45, isBaseLayer:true}
+        );
+		googleSatellite = new OpenLayers.Layer.Google(
+		  "Satellite",
+          {MIN_ZOOM_LEVEL: 7, type: google.maps.MapTypeId.SATELLITE, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.75, isBaseLayer:true}
         );
         //type: google.maps.MapTypeId.TERRAIN, google.maps.MapTypeId.HYBRID, google.maps.MapTypeId.SATELLITE
   
 		
-		map.addLayers([googlelayer]); //dir_layer, //, edge_layer, node_layer 
+		map.addLayers([googleStreet, googleTerrain, googleSatellite]); //dir_layer, //, edge_layer, node_layer 
 
 
         var panpanel = new OpenLayers.Control.PanZoomBar({slideFactor:300, displayClass:"olControlPanZoomBarPanup"});
@@ -899,7 +919,7 @@ var initfunction =function(){
 	var thediv = $("<div>").attr('id', 'layermenudiv');
 	$("#popupholder").append(thediv);
 
-	$("#layermenudiv").dialog({autoOpen:true});
+	$("#layermenudiv").dialog({autoOpen:true, position:['right', 'top'], title:"Layers"});
 
 //******************************Layer functions
 
