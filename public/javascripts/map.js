@@ -821,10 +821,11 @@ var searchByAddress = function(e){
 			$("#addressSearchPopup").dialog('close');
 			return;
 		}
-		$("#addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' class='validate[required]' type='text'/><br/>City: <input name='searchCity' id='searchCity' class='validate[required]' type='text'/><br/>State: <input name='searchState' id='searchState' class='validate[required]' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' class='validate[required]' type='text'/><input type='submit' value='Search'><br/></form>");
+		$("#addressSearchResults").html("");
+		//$("#addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' type='text'/><br/>City: <input name='searchCity' id='searchCity' type='text'/><br/>State: <input name='searchState' id='searchState' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' type='text'/><input type='submit' value='Search'><input type='reset' value='Clear Form' /><br/></form><div id='addressSearchResults'>Results go here</div>");
 	}
 	else{
-	  var thediv = $("<div>").attr('id', "addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' class='validate[required]' type='text'/><br/>City: <input name='searchCity' id='searchCity' class='validate[required]' type='text'/><br/>State: <input name='searchState' id='searchState' class='validate[required]' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' class='validate[required]' type='text'/><br/><input type='submit' value='Search'></form>");
+	  var thediv = $("<div>").attr('id', "addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' type='text'/><br/>City: <input name='searchCity' id='searchCity' type='text'/><br/>State: <input name='searchState' id='searchState' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' type='text'/><br/><input type='submit' value='Search'><input type='reset' value='Reset' /></form><br/><div id='addressSearchResults'>Results go here</div>");
 	  $("#popupholder").append(thediv);
 	}
   $("#addressSearchPopup").dialog({autoOpen:true, title:"Address Search"});
@@ -851,12 +852,26 @@ var searchByAddress = function(e){
   });
 }
 
+var addressSearchPanto = function(x, y){
+	var lonlat = new OpenLayers.LonLat(x, y).transform(normalproj, mercator);
+//zoom to 
+	if (map.getZoom() < 10){
+		map.zoomTo(10);
+	}
+	map.panTo(lonlat);
+
+}
 
 var jsonpCallback = function(data){
-	console.log(data.candidates);
-	if (data.candidates.length >0){
-  		var lonlat = new OpenLayers.LonLat(data.candidates[0]['location']['x'], data.candidates[0]['location']['y']).transform(normalproj, mercator);
-		map.panTo(lonlat);
+	$("#addressSearchResults").html("");
+	if (data.candidates.length == 0){
+		$("#addressSearchResults").html("Your Search Returned No Results");
+	}
+	for (var x=0; x<data.candidates.length;x++){
+		if(x >4){break;}
+		//var lonlat = new OpenLayers.LonLat(data.candidates[0]['location']['x'], data.candidates[0]['location']['y']).transform(normalproj, mercator);
+		var thehtml = "<a href='javascript:addressSearchPanto(" + data.candidates[x]['location']['x'] + "," + data.candidates[x]['location']['y'] + ");'>" + data.candidates[x]['address'] + "</a><br/>";
+		$("#addressSearchResults").append(thehtml);
 	}
 }
 
@@ -868,7 +883,7 @@ var initfunction =function(){
 
 
 //top menu init
-	var themenu = $("<div>").addClass("topmenu menubutton ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress' class='menubutton'>Search By Address</span><span id='statusWindowMenu' class='menubutton active'>Status Window</span><span id='timeScaleMenu' class='menubutton active'>Time Scale</span>");
+	var themenu = $("<div>").addClass("topmenu menubutton ui-widget-header").attr('id', 'topmenuwrapper').html("<span id='searchbyaddress' class='menubutton'>Search By Address</span><span id='statusWindowMenu' class='menubutton active'>Status Window</span><span id='timeScaleMenu' class='menubutton active'>Time Scale</span><span id='layerMenu' class='menubutton active'>Map Layer Menu</span>");
    $("#popupholder").append(themenu);
 
 	$("#searchbyaddress").click(searchByAddress);
@@ -891,6 +906,17 @@ var initfunction =function(){
 		else {
 			$("#timeScaleMenu").addClass("active");
 			$("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"Time Scale"});
+		}
+	});
+
+	$("#layerMenu").click(function(){
+		if($("#layerMenu").hasClass("active")){
+			$("#layerMenu").removeClass("active");
+			$("#layermenudiv").dialog("close");
+		}
+		else {
+			$("#layerMenu").addClass("active");
+			$("#layermenudiv").dialog({autoOpen:true, position:['right', 'top'], resizable:false, title:"Layer Menu"});
 		}
 	});
 
@@ -939,12 +965,12 @@ var initfunction =function(){
         );
 		googleSatellite = new OpenLayers.Layer.Google(
 		  "Satellite",
-          {MIN_ZOOM_LEVEL: 7, type: google.maps.MapTypeId.SATELLITE, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.75, isBaseLayer:true}
+          {MIN_ZOOM_LEVEL: 7, type: google.maps.MapTypeId.HYBRID, MAX_ZOOM_LEVEL: 19, "sphericalMercator": true, opacity:.75, isBaseLayer:true}
         );
         //type: google.maps.MapTypeId.TERRAIN, google.maps.MapTypeId.HYBRID, google.maps.MapTypeId.SATELLITE
   
 		
-		map.addLayers([googleStreet, googleTerrain, googleSatellite]); //dir_layer, //, edge_layer, node_layer 
+		map.addLayers([googleSatellite, googleStreet, googleTerrain]); //dir_layer, //, edge_layer, node_layer 
 
 
         var panpanel = new OpenLayers.Control.PanZoomBar({slideFactor:300, displayClass:"olControlPanZoomBarPanup"});
@@ -961,7 +987,7 @@ var initfunction =function(){
 	var thediv = $("<div>").attr('id', 'layermenudiv');
 	$("#popupholder").append(thediv);
 
-	$("#layermenudiv").dialog({autoOpen:true, position:['right', 'top'], title:"Layers"});
+	$("#layermenudiv").dialog({autoOpen:true, position:['right', 'top'], title:"Layers", closeOnEscape:false});
 
 //******************************Layer functions
 
