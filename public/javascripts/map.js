@@ -730,14 +730,18 @@ now.clientNewLayer = function(thejson){
 
 $(document).ready(function(){ 
 
-  var thediv = $("<div>").attr('id', "newUserForm").html("<form action='#' id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' value='Log in'></form>");
+  var thediv = $("<div>").attr('id', "newUserForm").html("<form id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' id='usersubmit' value='Log in'></form>");
   $("#popupholder").append(thediv);
   $("#newUserForm").dialog({autoOpen:true});
-  $("#newNameForm").submit(function(){
-    if ($(this).validationEngine("validate") == false){
+  $("#usersubmit").click(function(event){
+    event.preventDefault();
+    
+    if ($("#newNameForm").validationEngine("validate") == false){
       return false;
     }
+    console.log("here is before the server thing");
     now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), window.location.pathname.split('/')[1]);
+    console.log("Can't get past the serverCheckUser function");
     return false;
   });
 
@@ -765,7 +769,8 @@ var onFeatureUnSelectNodes = function(){
 }
 
 var closedAttributesPopup = function(){
-    map.removePopup(activePopup);
+    activeControl.unselectAll();
+    //map.removePopup(activePopup);
     activePopup = null;
 	console.log("now deleting tempfeature");
     tempFeature = null;

@@ -93,6 +93,7 @@ nowjs.on('disconnect', function(){
 everyone.now.serverCheckUser = function(username, challenge, mapid){
 	var theuserid = this;
 	//console.log("got my mapid: " + mapid);
+/*
 	try {
 		check(username).isAlphanumeric();
 	}
@@ -109,18 +110,21 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 		console.log("got this error in the isAlphanumeric " + e.message);
 		return;
 	}
+*/
 	//console.log("got through validation now we are runing queries");
+	console.log("ok at least hit the function");
 	mydb.connect(function(error){ if(error) {console.log("there was a major error with mysql" + error);}
-		this.query("SELECT uid FROM users WHERE username='" + username + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error,rows1){
+		myconnection = this;
+		myconnection.query("SELECT uid FROM users WHERE username='" + username + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error,rows1){
 			if(error){console.log("there was an error in sql " + error)}
 			if (rows1.length == 1){
-				mydb.connect(function(error){ if (error){console.log(error)}
-					this.query("SELECT uid FROM users WHERE username='" + username + "' AND challenge='" + challenge + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error, rows2){
+					myconnection.query("SELECT uid FROM users WHERE username='" + username + "' AND challenge='" + challenge + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error, rows2){
 						if(error){console.log(error);}
 						if (rows2.length == 1){
-							mydb.connect(function(error){
-								this.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=" +rows2[0]['uid'] + " AND mapid='" + mapid + "'").execute(function(error){if (error){console.log(error)}});
-							});
+							console.log("at least runnign the sql as well");
+						
+							myconnection.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=" +rows2[0]['uid'] + " AND mapid='" + mapid + "'").execute(function(error){if (error){console.log(error)}});
+						
 							nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
 							theuserid.now.mapid = mapid;
 							theuserid.now.clientCheckUser(true, rows2[0]['uid']);
@@ -129,20 +133,18 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 							theuserid.now.clientCheckUser(false, 'newUserCheck', 'Either a user already has this user name or your password is in correct.  If you have signed in before with this user name please try to enter your street name again.');
 						}
 					});
-				});
-			} else {
-				mydb.connect(function(error){
-					this.query("INSERT INTO users SET username='" + username + "', challenge='" + challenge + "', created=UNIX_TIMESTAMP(), login=UNIX_TIMESTAMP(), mapid='"+ mapid +"'").execute(function(error){  if (error){console.log(error)}
-						mydb.connect(function(error){
-							this.query("SELECT MAX(uid) as maxuserid FROM users").execute(function(error, rows3){
+			
+			} else{
+					myconnection.query("INSERT INTO users SET username='" + username + "', challenge='" + challenge + "', created=UNIX_TIMESTAMP(), login=UNIX_TIMESTAMP(), mapid='"+ mapid +"'").execute(function(error){  if (error){console.log(error)}
+							myconnection.query("SELECT MAX(uid) as maxuserid FROM users").execute(function(error, rows3){
 								if (error){console.log(error)}
 								nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
 								theuserid.now.mapid = mapid;
 								theuserid.now.clientCheckUser(true, rows3[0]['maxuserid']);
 							});
-						});
+						
 					});
-				});
+			
 			}
 		});
 	});
@@ -511,6 +513,6 @@ everyone.now.serverGetAttributeForm = function(layername, shapeid){
 // Only listen on $ node app.js
 
 if (!module.parent) {
-  app.listen(80);
+  app.listen(3000);
   console.log("Express server listening on port %d", app.address().port)
 }
