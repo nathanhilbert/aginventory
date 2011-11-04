@@ -79,7 +79,7 @@ var everyone = nowjs.initialize(app);
 Hopefully nowjs can figure out when a group is empty to delete it.  This could be a major memory leak.
 
 */
-/*
+
 nowjs.on('disconnect', function(){
  	console.log("we were able tog et the mapid " + this.user.clientId);
 	nowjs.getGroup(this.now.mapid).count(function(ct){
@@ -88,14 +88,16 @@ nowjs.on('disconnect', function(){
 });
 
 
+
 nowjs.on('connect', function(){
-	console.log("we were able tog et the mapid " + this.user.clientId);
-	nowjs.getGroup(this.now.mapid).count(function(ct){
-		console.log("there are this many members in the group on coming here " + ct);
-	});
+	console.log("heres the users cookie " + util.inspect(this.user.cookie));
+	//console.log("we were able tog et the mapid " + this.user.clientId);
+	//nowjs.getGroup(this.now.mapid).count(function(ct){
+	//	console.log("there are this many members in the group on coming here " + ct);
+	//});
 
 });
-*/
+
 
 
 

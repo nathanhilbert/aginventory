@@ -397,8 +397,11 @@ now.clientAddFeature = function(thejson){
 var closedPopup = function() {
   $("#attributeForm").validationEngine('hideAll');
   map.removePopup(activePopup);
-  tempFeature.layer.removeFeatures([tempFeature]);
-  tempFeature = null;
+	if(!tempFeature.attributes.shapeid){
+	  tempFeature.layer.removeFeatures([tempFeature]);
+	  tempFeature = null;
+	}
+	activeControl.unselectAll();
 
 }
 
@@ -415,7 +418,7 @@ now.clientGetAttributeForm = function(formobj, shapeid){
     true,
     closedPopup
   );
-  activePopup.autoSize = true;
+  //activePopup.autoSize = true;
   activePopup.closeOnMove = false;
   map.addPopup(activePopup);
 	$('#attributeForm textarea').tinymce({
@@ -428,7 +431,10 @@ now.clientGetAttributeForm = function(formobj, shapeid){
 		theme_advanced_buttons4 : "",
 		theme_advanced_toolbar_location: 'top',
 		theme_advanced_toolbar_align : 'left',
+		oninit: function(){activePopup.updateSize();}
 	});
+
+	//activePopup.updateSize();
 	//$("textarea").tinymce().show();
   if (shapeid){
 		console.log("shapeid not null so doing it differently");
@@ -808,6 +814,8 @@ now.clientGetAttributes = function(thehtml){
   activePopup.autoSize = true;
   activePopup.closeOnMove = true;
   map.addPopup(activePopup);
+
+  //activePopup.updateSize();
 
 	$("#editattributes").click(function(event){
 		map.removePopup(activePopup);
