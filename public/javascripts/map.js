@@ -418,9 +418,22 @@ now.clientGetAttributeForm = function(formobj, shapeid){
   activePopup.autoSize = true;
   activePopup.closeOnMove = false;
   map.addPopup(activePopup);
+	$('#attributeForm textarea').tinymce({
+		script_url : '/tinymce/tiny_mce/tiny_mce.js',
+		theme: "advanced",
+		//plugins : "save",
+		theme_advanced_buttons1 : "link,bold, underline",
+		theme_advanced_buttons2 : "",
+		theme_advanced_buttons3 : "",
+		theme_advanced_buttons4 : "",
+		theme_advanced_toolbar_location: 'top',
+		theme_advanced_toolbar_align : 'left',
+	});
+	//$("textarea").tinymce().show();
   if (shapeid){
 		console.log("shapeid not null so doing it differently");
-	  $("#attributeForm").submit(function(){
+	  $("#attributeForm").submit(function(event){
+		event.preventDefault();
 	    if ($(this).validationEngine("validate") == false){
 	      return false;
 	    }
@@ -436,7 +449,8 @@ now.clientGetAttributeForm = function(formobj, shapeid){
   }
   else{
 
-	  $("#attributeForm").submit(function(){
+	  $("#attributeForm").submit(function(event){
+		 event.preventDefault();
 	    if ($(this).validationEngine("validate") == false){
 	      return false;
 	    }
@@ -741,7 +755,6 @@ $(document).ready(function(){
     }
     console.log("here is before the server thing");
     now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), window.location.pathname.split('/')[1]);
-    console.log("Can't get past the serverCheckUser function");
     return false;
   });
 
@@ -930,8 +943,7 @@ var initfunction =function(){
    $("#popupholder").append(statusdiv);
 	$("#statuswindow").dialog({autoOpen:true, position:['left', 'bottom'], resizable:false, title:"Status Window"});
 
-        
-        selectedFeatures = [];
+        
 
     	mercator = new OpenLayers.Projection("EPSG:900913");  
     	normalproj = new OpenLayers.Projection("EPSG:4326");

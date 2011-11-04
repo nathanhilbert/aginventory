@@ -68,10 +68,7 @@ app.get('/', function(req, res){
 });
 
 
-app.get('/ajax', function(req,res){
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('{"type":"FeatureCollection", "features":[{"type":"Feature","geometry":{"type":"Point","coordinates":["-81.9569", "40.7746"]}, "properties":{"bcid":"65"}}]}');
-});
+
 
 //The now configuration
 
@@ -81,19 +78,31 @@ var everyone = nowjs.initialize(app);
 /*
 Hopefully nowjs can figure out when a group is empty to delete it.  This could be a major memory leak.
 
+*/
+/*
 nowjs.on('disconnect', function(){
-  getGroups(function(groups){
-		
+ 	console.log("we were able tog et the mapid " + this.user.clientId);
+	nowjs.getGroup(this.now.mapid).count(function(ct){
+		console.log("Now there is this many here " + ct);
+	});
+});
 
-  });
+
+nowjs.on('connect', function(){
+	console.log("we were able tog et the mapid " + this.user.clientId);
+	nowjs.getGroup(this.now.mapid).count(function(ct){
+		console.log("there are this many members in the group on coming here " + ct);
+	});
+
 });
 */
 
 
+
 everyone.now.serverCheckUser = function(username, challenge, mapid){
 	var theuserid = this;
-	//console.log("got my mapid: " + mapid);
-/*
+	console.log("got my mapid: " + mapid);
+
 	try {
 		check(username).isAlphanumeric();
 	}
@@ -110,7 +119,6 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 		console.log("got this error in the isAlphanumeric " + e.message);
 		return;
 	}
-*/
 	//console.log("got through validation now we are runing queries");
 	console.log("ok at least hit the function");
 	mydb.connect(function(error){ if(error) {console.log("there was a major error with mysql" + error);}
@@ -124,10 +132,13 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 							console.log("at least runnign the sql as well");
 						
 							myconnection.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=" +rows2[0]['uid'] + " AND mapid='" + mapid + "'").execute(function(error){if (error){console.log(error)}});
-						
-							nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
+							console.log("stopping here");
 							theuserid.now.mapid = mapid;
 							theuserid.now.clientCheckUser(true, rows2[0]['uid']);
+							nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
+							nowjs.getGroup(mapid).count(function(ct){
+								console.log("this makes this many in the group is " + ct);
+							});
 						}
 						else {
 							theuserid.now.clientCheckUser(false, 'newUserCheck', 'Either a user already has this user name or your password is in correct.  If you have signed in before with this user name please try to enter your street name again.');
@@ -138,9 +149,13 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 					myconnection.query("INSERT INTO users SET username='" + username + "', challenge='" + challenge + "', created=UNIX_TIMESTAMP(), login=UNIX_TIMESTAMP(), mapid='"+ mapid +"'").execute(function(error){  if (error){console.log(error)}
 							myconnection.query("SELECT MAX(uid) as maxuserid FROM users").execute(function(error, rows3){
 								if (error){console.log(error)}
-								nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
 								theuserid.now.mapid = mapid;
+								console.log("stopping here");
 								theuserid.now.clientCheckUser(true, rows3[0]['maxuserid']);
+								nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
+								nowjs.getGroup(mapid).count(function(ct){
+									console.log("this makes this many in the group is " + ct);
+								});
 							});
 						
 					});
@@ -164,6 +179,7 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 var sendFeatures = function(theuserid, myconnection, therows){
 	var thesend = {'layerid':therows['layerid'], 'layertitle':therows['layername'], 'layertype':therows['type'],'shape':therows['shape'],  'color':therows['color']};
 	theuserid.now.clientNewLayer(JSON.stringify(thesend));
+	console.log("snet the client layer");
 //now adding the features for each
 	myconnection.query("SELECT data, shapeid FROM mapdata WHERE layerid=" + therows['layerid']).execute(function(error, datarows){
 		if (error){console.log(error);}
@@ -188,14 +204,17 @@ var sendFeatures = function(theuserid, myconnection, therows){
 everyone.now.populateMap = function(mapid){
 //calls one function for each of the layers that are part of this map with the JSON encoded data
 //could maybe user jquery progress bar here.
+	console.log("populate is now doing its thing");
 	var theuserid = this;
 	mydb.connect(function(error){if (error){console.log(error)}
 		var myconnection = this;
 		myconnection.query("SELECT layerid, layername, type, color, shape FROM maplayers WHERE mapid='" + theuserid.now.mapid + "'").execute(function(error, rows){
 			if(error){console.log(error);}
 			for (var x=0;x<rows.length;x++){
+				
 				sendFeatures(theuserid, myconnection, rows[x]);
 			}
+			console.log("now getting to finish pouplate for clietn");
 			theuserid.now.clientFinishPopulate();
 		});
 	});
@@ -205,11 +224,7 @@ everyone.now.populateMap = function(mapid){
 }
 
 
-everyone.now.distributeMessage = function(message){
-  console.log("here is the message: " + message);
-  everyone.now.recieveMessage("nothing", "morre messages");
-  everyone.now.createPopup("Here is a popup");
-}
+
 
 everyone.now.serverNewLayer = function(thequerystring){
   //console.log(this.now.username + " Wants to add this layer: " + this.now.newlayerinfo);
