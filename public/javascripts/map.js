@@ -840,7 +840,8 @@ now.clientNewLayer = function(thejson){
 
 
 $(document).ready(function(){ 
-	now.mapid = window.location.pathname.split('/')[1];
+	var mappath = window.location.pathname.split('/')[1];
+	now.mapid = mappath;
 
   var thediv = $("<div>").attr('id', "newUserForm").html("<form id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' id='usersubmit' value='Log in'></form>");
   $("#popupholder").append(thediv);
@@ -851,7 +852,7 @@ $(document).ready(function(){
     if ($("#newNameForm").validationEngine("validate") == false){
       return false;
     }
-    now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), window.location.pathname.split('/')[1]);
+    now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), mappath);
     return false;
   });
 
