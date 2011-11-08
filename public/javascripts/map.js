@@ -572,9 +572,11 @@ var startControl = function(action, layername){
   else if (action == 'modify'){
 console.log("starting up the modify control");
     activeControl = new OpenLayers.Control.ModifyFeature(activeDrawLayer, {mode: OpenLayers.Control.ModifyFeature.DRAG| OpenLayers.Control.ModifyFeature.RESHAPE, 'onModificationEnd': finishModification}); //, geometryTypes:["OpenLayers.Geometry.Polygon"]
+	appendLayerMenu();
   }
   else if (action == 'erase'){
     activeControl = new OpenLayers.Control.SelectFeature(activeDrawLayer, {'onSelect':deleteFeature});
+	appendLayerMenu();
   }
   map.addControl(activeControl);
   activeControl.activate();
@@ -624,7 +626,7 @@ var menucontrol = function(){
 	    $("#colorpicker").farbtastic("#picker");
 	    $("#newLayerForm2").submit(function(){
 		newlayerinfo += "&" + $(this).serialize();
-                $("#newLayerForm").html('<form action="#" id="newLayerForm3">Enter the Attribute block<br/><textarea id="menuattributes" name="menuattributes" rows="6">{ "title": {"label": "Title","required": "true","type": "textfield"},"description":{"label": "something","type":"textarea", "required":"true","rows": "6"}}</textarea><br/><input type="submit" value="Save"></form>');
+                $("#newLayerForm").html('<form action="#" id="newLayerForm3">Enter the Attribute block<br/><textarea id="menuattributes" name="menuattributes" rows="6">{ "title": {"label": "Title","required": "true","type": "textfield"},"description":{"label": "Description","type":"textarea", "required":"true","rows": "6"}}</textarea><br/><input type="submit" value="Save"></form>');
 	        $("#newLayerForm3").submit(function(){
 				  newlayerinfo += "&" + $(this).serialize();
 				  //console.log(newlayerinfo);
@@ -640,6 +642,7 @@ var menucontrol = function(){
 	 
 	}
 var appendLayerMenu = function(){
+	$(".layerexpandmenu").remove();
 /*
 	$(".dropdownmenu").remove();
 	$(".drawimage").remove();
@@ -709,7 +712,13 @@ var appendLayerMenu = function(){
 						});
 			}
 			else{
-				$(this).children().show().prepend("Click to stop changing this layer");
+				console.log("now showing this div " + $(this).children().attr('class'));
+				$(this).children('.layerexpandmenu').show()
+				$(this).children('.layerexpandmenu').prepend("<span id='stopEditButton' class='stopEditButton'>Click to stop editing this layer</span>");
+				$(".stopEditButton").click(function(event){
+					clearDrawing();
+					event.stopPropagation();
+				});
 
 			}
 		}
@@ -821,6 +830,7 @@ now.clientNewLayer = function(thejson){
 
 $(document).ready(function(){ 
 
+
   var thediv = $("<div>").attr('id', "newUserForm").html("<form id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' id='usersubmit' value='Log in'></form>");
   $("#popupholder").append(thediv);
   $("#newUserForm").dialog({autoOpen:true});
@@ -830,7 +840,6 @@ $(document).ready(function(){
     if ($("#newNameForm").validationEngine("validate") == false){
       return false;
     }
-    console.log("here is before the server thing");
     now.serverCheckUser($("#newNameFormUsername").val(), $("#newUserCheck").val(), window.location.pathname.split('/')[1]);
     return false;
   });

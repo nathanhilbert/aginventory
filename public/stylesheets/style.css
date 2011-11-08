@@ -46,6 +46,27 @@ body {
 	cursor:pointer;
 }
 
+.layermenubutton {
+	background-color: #CCCCCC;
+	cursor: pointer;
+	padding: 5px;
+	display:block;
+}
+
+.layermenubutton:hover {
+	background-color: #C4C41A;
+}
+
+.stopEditButton {
+	cursor:pointer;
+	color: red;
+
+}
+
+.stopEditButton:hover {
+	color: blue;
+
+}
 
 
 

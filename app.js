@@ -91,6 +91,7 @@ nowjs.on('disconnect', function(){
 
 nowjs.on('connect', function(){
 	console.log("heres the users cookie " + util.inspect(this.user.cookie));
+	console.log("here is some other stuff " + util.inspect(this.user));
 	//console.log("we were able tog et the mapid " + this.user.clientId);
 	//nowjs.getGroup(this.now.mapid).count(function(ct){
 	//	console.log("there are this many members in the group on coming here " + ct);
@@ -125,16 +126,15 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 	console.log("ok at least hit the function");
 	mydb.connect(function(error){ if(error) {console.log("there was a major error with mysql" + error);}
 		myconnection = this;
-		myconnection.query("SELECT uid FROM users WHERE username='" + username + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error,rows1){
+		myconnection.query("SELECT uid FROM users WHERE username=? AND mapid=? LIMIT 1", [username, mapid]).execute(function(error,rows1){
 			if(error){console.log("there was an error in sql " + error)}
 			if (rows1.length == 1){
-					myconnection.query("SELECT uid FROM users WHERE username='" + username + "' AND challenge='" + challenge + "' AND mapid='" + mapid + "' LIMIT 1").execute(function(error, rows2){
+					myconnection.query("SELECT uid FROM users WHERE username=? AND challenge=? AND mapid=? LIMIT 1", [username, challenge, mapid]).execute(function(error, rows2){
 						if(error){console.log(error);}
 						if (rows2.length == 1){
-							console.log("at least runnign the sql as well");
+							//console.log("at least runnign the sql as well");
 						
-							myconnection.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=" +rows2[0]['uid'] + " AND mapid='" + mapid + "'").execute(function(error){if (error){console.log(error)}});
-							console.log("stopping here");
+							myconnection.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=? AND mapid=?", [rows2[0]['uid'], mapid]).execute(function(error){if (error){console.log(error)}});
 							theuserid.now.mapid = mapid;
 							theuserid.now.clientCheckUser(true, rows2[0]['uid']);
 							nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
@@ -148,7 +148,7 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 					});
 			
 			} else{
-					myconnection.query("INSERT INTO users SET username='" + username + "', challenge='" + challenge + "', created=UNIX_TIMESTAMP(), login=UNIX_TIMESTAMP(), mapid='"+ mapid +"'").execute(function(error){  if (error){console.log(error)}
+					myconnection.query("INSERT INTO users SET username=?, challenge=?, created=UNIX_TIMESTAMP(), login=UNIX_TIMESTAMP(), mapid=?", [username, challenge, mapid]).execute(function(error){  if (error){console.log(error)}
 							myconnection.query("SELECT MAX(uid) as maxuserid FROM users").execute(function(error, rows3){
 								if (error){console.log(error)}
 								theuserid.now.mapid = mapid;
@@ -183,7 +183,7 @@ var sendFeatures = function(theuserid, myconnection, therows){
 	theuserid.now.clientNewLayer(JSON.stringify(thesend));
 	console.log("snet the client layer");
 //now adding the features for each
-	myconnection.query("SELECT data, shapeid FROM mapdata WHERE layerid=" + therows['layerid']).execute(function(error, datarows){
+	myconnection.query("SELECT data, shapeid FROM mapdata WHERE layerid=?",[therows['layerid']]).execute(function(error, datarows){
 		if (error){console.log(error);}
 		var datasend = [];
 		for (var i =0;i< datarows.length;i++){
@@ -203,7 +203,7 @@ everyone.now.populateMap = function(mapid){
 	var theuserid = this;
 	mydb.connect(function(error){if (error){console.log(error)}
 		var myconnection = this;
-		myconnection.query("SELECT layerid, layername, type, color, shape FROM maplayers WHERE mapid='" + theuserid.now.mapid + "'").execute(function(error, rows){
+		myconnection.query("SELECT layerid, layername, type, color, shape FROM maplayers WHERE mapid=?", [theuserid.now.mapid]).execute(function(error, rows){
 			if(error){console.log(error);}
 			for (var x=0;x<rows.length;x++){
 				
@@ -233,7 +233,7 @@ everyone.now.serverNewLayer = function(thequerystring){
 //NEED to verify that this layer name is not being added will do later, since I am adding all of the layers
 		myconnection = this;
 		if (!queryobj['shape']){queryobj['shape']='none';}
-		myconnection.query("INSERT INTO maplayers SET layername='" + queryobj['layertitle'] + "', type='" + queryobj['layertype'] + "', color='" + queryobj['picker'] + "', shape='" + queryobj['symbol'] + "', mapid='" + theuserid.now.mapid + "', uid='" + theuserid.now.uid + "'").execute(function(error){if (error){console.log(error);}
+		myconnection.query("INSERT INTO maplayers SET layername=?, type=?, color=?, shape=?, mapid=?, uid=?", [queryobj['layertitle'] ,queryobj['layertype'],queryobj['picker'],queryobj['symbol'],theuserid.now.mapid, theuserid.now.uid ]).execute(function(error){if (error){console.log(error);}
 			myconnection.query("SELECT MAX(layerid) as maxlayerid FROM maplayers").execute(function(error2, rows){
 				if (error2){console.log(error2);}
 				thelayerid = rows[0]['maxlayerid'];
@@ -272,9 +272,9 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 	mydb.connect(function(error){if (error){console.log(error)}
 		var theconnection = this;
 		var thelayerid = null;
-		var query1 = "SELECT layerid, color, shape, type FROM maplayers WHERE layername='" + geoparse['properties']['layer'] + "' AND mapid='" + theuserid.now.mapid + "' LIMIT 1";
-		console.log("Here is query1 " + query1);
-		theconnection.query(query1).execute(function(theerror, rows){
+		var query1 = "SELECT layerid, color, shape, type FROM maplayers WHERE layername=? AND mapid=? LIMIT 1";
+		//console.log("Here is query1 " + query1);
+		theconnection.query(query1, [geoparse['properties']['layer'], theuserid.now.mapid]).execute(function(theerror, rows){
 			if(theerror || !(rows.length > 0)){console.log(theerror);}
 			//console.log(util.inspect(rows));
 			console.log(util.inspect(rows));
@@ -285,9 +285,9 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 			var thegraphic = rows[0]['shape'];
 			var layertype = rows[0]['type'];
 		
-			var query2 = "INSERT INTO mapdata SET data='" + thejson + "', layerid=" + thelayerid;
-			console.log("Here is query1 " + query2);
-			theconnection.query(query2).execute(function(error3){if (error3){console.log(error3);}
+			var query2 = "INSERT INTO mapdata SET data=?, layerid=?";
+			//console.log("Here is query1 " + query2);
+			theconnection.query(query2, [thejson, thelayerid]).execute(function(error3){if (error3){console.log(error3);}
 				var theshapeid = 0;
 				theconnection.query("SELECT MAX(shapeid) as maxshape FROM mapdata").execute(function(error2,rows2){
 					if(error2){console.log(error2);}
@@ -319,17 +319,17 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 	});
 }
 var iterkeys = function(theitem, thedata, theshapeid, thelayerid, theconnection){
-	theconnection.query("SELECT atid FROM mapatts WHERE name='" + theitem + "' AND layerid=" + thelayerid).execute(function(error, rows3){
+	theconnection.query("SELECT atid FROM mapatts WHERE name=? AND layerid=?" , [theitem,thelayerid]).execute(function(error, rows3){
 		if(error){console.log(error);}
 		console.log(util.inspect(rows3));
 		console.log(theitem + " with this " + thedata);
 		if (rows3.length > 0){ 
 			var theattid = rows3[0]['atid'];
-			theconnection.query("DELETE FROM mapattdata WHERE atid=" + theattid + " AND shapeid=" + theshapeid).execute(function(error){
+			theconnection.query("DELETE FROM mapattdata WHERE atid=? AND shapeid=?" , [theattid, theshapeid]).execute(function(error){
 				if(error){console.log(error);}
 
 		
-				theconnection.query("INSERT INTO mapattdata SET atid=" + theattid + ", shapeid=" + theshapeid + ", data='" + thedata + "'").execute(function(error){
+				theconnection.query("INSERT INTO mapattdata SET atid=?, shapeid=?, data=?", [theattid, theshapeid, thedata]).execute(function(error){
 					if(error){console.log(error);}
 				});
 			});
@@ -341,12 +341,12 @@ var iterkeys = function(theitem, thedata, theshapeid, thelayerid, theconnection)
 
 everyone.now.serverDeleteFeature = function(delobj){
 	shapeid = delobj['shapeid'];
-	console.log("here is the shape id for deleting " + shapeid);
+	//console.log("here is the shape id for deleting " + shapeid);
 	theuserid = this;
 	mydb.connect(function(error){if (error){console.log(error)}
 		myconnection = this;
-		myconnection.query("DELETE FROM mapdata WHERE shapeid=" + shapeid).execute(function(error){if(error){console.log(error);}});
-		myconnection.query("DELETE FROM mapattdata WHERE shapeid=" + shapeid).execute(function(error){if(error){console.log(error);}});
+		myconnection.query("DELETE FROM mapdata WHERE shapeid=?", [shapeid]).execute(function(error){if(error){console.log(error);}});
+		myconnection.query("DELETE FROM mapattdata WHERE shapeid=?", [shapeid]).execute(function(error){if(error){console.log(error);}});
 		nowjs.getGroup(theuserid.now.mapid).now.clientDeleteFeature(delobj);
 	});
 }
@@ -357,10 +357,10 @@ everyone.now.serverModifyFeature = function(thejson){
 	mydb.connect(function(error){if (error){console.log(error)}
 		myconnection = this;
 
-		var query1 = "SELECT layerid FROM maplayers WHERE layername='" + featureobj['properties']['layer'] + "' AND mapid='" + theuserid.now.mapid + "' LIMIT 1";
-		myconnection.query(query1).execute(function(error, rows){if(error){console.log(error);}
+		var query1 = "SELECT layerid FROM maplayers WHERE layername=? AND mapid=? LIMIT 1";
+		myconnection.query(query1, [featureobj['properties']['layer'] , theuserid.now.mapid]).execute(function(error, rows){if(error){console.log(error);}
 			if (rows.length >0){
-				myconnection.query("UPDATE mapdata SET data='" + thejson + "' WHERE layerid=" + rows[0]['layerid'] + " AND shapeid=" + shapeid).execute(function(error){
+				myconnection.query("UPDATE mapdata SET data=? WHERE layerid=? AND shapeid=?" , [thejson, rows[0]['layerid'], shapeid]).execute(function(error){
 					if(error){console.log(error);}
 				});
 			}
@@ -378,9 +378,9 @@ everyone.now.serverGetAttributes = function(shapeid, layer){
 	mydb.connect(function(error){if (error){console.log(error)}
 		myconnection = this;
 
-		var query1 = "SELECT mapattdata.data, mapatts.label  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=" + shapeid + " AND mapid='" + theuserid.now.mapid + "' AND maplayers.layername='" + layer + "'";
-		console.log(query1);
-		myconnection.query(query1).execute(function(error, rows){if(error){console.log(error);}
+		var query1 = "SELECT mapattdata.data, mapatts.label  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=? AND mapid=? AND maplayers.layername=?";
+		//console.log(query1);
+		myconnection.query(query1, [shapeid, theuserid.now.mapid, layer]).execute(function(error, rows){if(error){console.log(error);}
 			thehtml = "";
 			for (var y =0; y<rows.length; y++){
 				if (rows[y]['label'] != ""){
@@ -401,14 +401,14 @@ everyone.now.serverUpdateAttributes = function(attributes, shapeid, layername){
 	mydb.connect(function(error){if (error){console.log(error)}
 		theconnection = this;
 	
-		theconnection.query("SELECT layerid FROM maplayers WHERE layername='" + layername + "' LIMIT 1").execute(function(error2,rows2){
+		theconnection.query("SELECT layerid FROM maplayers WHERE layername=? LIMIT 1", [layername]).execute(function(error2,rows2){
 			if(error2){console.log(error2);}
 			thelayerid = rows2[0]['layerid'];
 		
 	//starting the attributes of the data
-			console.log("here are the attributes " + attributes);
+			//console.log("here are the attributes " + attributes);
 			var attparse = querystring.parse(attributes);
-			console.log(util.inspect(attparse));
+			//console.log(util.inspect(attparse));
 			attkeys = [];
 
 
@@ -431,7 +431,7 @@ everyone.now.serverGetAttributeForm = function(layername, shapeid){
   //console.log(utils.inspect(formObj));
 	mydb.connect(function(error){if (error){console.log(error)}
 		myconnection = this;
-		myconnection.query("SELECT mapatts.label, mapatts.name, mapatts.type, mapatts.rows, mapatts.required, mapatts.options FROM mapatts LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE maplayers.layername='" + layername + "' AND maplayers.mapid='" + theuserid.now.mapid + "'").execute(function(error, rows){
+		myconnection.query("SELECT mapatts.label, mapatts.name, mapatts.type, mapatts.rows, mapatts.required, mapatts.options FROM mapatts LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE maplayers.layername=? AND maplayers.mapid=?", [layername, theuserid.now.mapid]).execute(function(error, rows){
 			if(error){console.log(error)}
 			for (var u=0; u<rows.length; u++){
 				formObj[rows[u]['name']] = {'label':rows[u]['label'], 'type':rows[u]['type'], 'rows':rows[u]['rows'], 'required':rows[u]['required'], 'options':rows[u]['options']};
@@ -502,8 +502,8 @@ everyone.now.serverGetAttributeForm = function(layername, shapeid){
 
 			if (shapeid){
 				console.log("doing the shapeid with " + shapeid);
-				var query1 = "SELECT mapattdata.data, mapatts.name  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=" + shapeid + " AND mapid='" + theuserid.now.mapid + "' AND maplayers.layername='" + layername + "'";
-				myconnection.query(query1).execute(function(error, rows2){
+				var query1 = "SELECT mapattdata.data, mapatts.name  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=? AND mapid=? AND maplayers.layername=?";
+				myconnection.query(query1, [shapeid, theuserid.now.mapid, layername]).execute(function(error, rows2){
 					if(error){console.log(error);}
 					for (var t =0; t<rows.length; t++){
 						formObj[rows2[t]['name']]['value'] = rows2[t]['data'];
