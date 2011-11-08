@@ -14,7 +14,7 @@
 		};
 		$.validationEngineLanguage.allRules["onlyLetNumSpec"] = {
 				// Good for database fields
-				"regex": /^[0-9a-zA-Z_-]+$/,
+				"regex": /^[0-9a-zA-Z_-\s]+$/,
 				"alertText": "* Only Letters, Numbers, hyphen(-) and underscore(_) allowed"
 		};
 	//	# more validations may be added after this point

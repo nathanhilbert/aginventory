@@ -105,8 +105,8 @@
                     "alertText": "* Letters only"
                 },
                 "onlyLetterNumber": {
-                    "regex": /^[0-9a-zA-Z]+$/,
-                    "alertText": "* No special characters allowed"
+                    "regex": /^[0-9a-zA-Z\s]+$/,
+                    "alertText": "Only Letters, Numbers, and Spaces"
                 },
                 // --- CUSTOM RULES -- Those are specific to the demos, they can be removed or changed to your likings
                 "ajaxUserCall": {

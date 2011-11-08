@@ -68,5 +68,12 @@ body {
 
 }
 
+#newLayerDiv{
+	background-color: #CCCCCC;
+	cursor: pointer;
+	padding: 5px;
+	display:block;
+}
+
 
 

@@ -504,8 +504,9 @@ everyone.now.serverGetAttributeForm = function(layername, shapeid){
 				console.log("doing the shapeid with " + shapeid);
 				var query1 = "SELECT mapattdata.data, mapatts.name  FROM mapattdata INNER JOIN mapatts ON mapattdata.atid=mapatts.atid LEFT JOIN maplayers ON mapatts.layerid=maplayers.layerid WHERE mapattdata.shapeid=? AND mapid=? AND maplayers.layername=?";
 				myconnection.query(query1, [shapeid, theuserid.now.mapid, layername]).execute(function(error, rows2){
+					console.log(util.inspect(rows2));
 					if(error){console.log(error);}
-					for (var t =0; t<rows.length; t++){
+					for (var t =0; t<rows2.length; t++){
 						formObj[rows2[t]['name']]['value'] = rows2[t]['data'];
 					}
 					createHTML(formObj, theuserid, shapeid);

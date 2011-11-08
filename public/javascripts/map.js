@@ -413,7 +413,10 @@ now.clientAddFeature = function(thejson){
 
 var closedPopup = function() {
   $("#attributeForm").validationEngine('hideAll');
-  map.removePopup(activePopup);
+	if ( activePopup){
+		map.removePopup(activePopup);
+		activePopup = null;
+	}
 	if(!tempFeature.attributes.shapeid){
 	  tempFeature.layer.removeFeatures([tempFeature]);
 	  tempFeature = null;
@@ -454,19 +457,23 @@ now.clientGetAttributeForm = function(formobj, shapeid){
 	//activePopup.updateSize();
 	//$("textarea").tinymce().show();
   if (shapeid){
-		console.log("shapeid not null so doing it differently");
+		//console.log("shapeid not null so doing it differently");
 	  $("#attributeForm").submit(function(event){
 		event.preventDefault();
 	    if ($(this).validationEngine("validate") == false){
 	      return false;
 	    }
 	    var attributes = $(this).serialize();
-		 console.log("here are my attributes " + attributes);
+		 //console.log("here are my attributes " + attributes);
 	    //console.log("now doing the close popup and sending to server");
-	    map.removePopup(activePopup);
+				
 	    now.serverUpdateAttributes(attributes, shapeid, tempFeature.layer.name); 
-	    activePopup = null
 	    tempFeature = null;
+		if (activePopup){
+			map.removePopup(activePopup);
+			activePopup = null;
+		}
+			activeControl.unselectAll();
 	    return false;
 	  });
   }
@@ -478,14 +485,18 @@ now.clientGetAttributeForm = function(formobj, shapeid){
 	      return false;
 	    }
 	    var attributes = $(this).serialize();
-		 console.log("here are my attributes " + attributes);
+		 //console.log("here are my attributes " + attributes);
 	    tempFeature.attributes = {'layer':activeDrawLayer.name};
 	    var encodedFeature = new OpenLayers.Format.GeoJSON().write(tempFeature);
 	    tempFeature.layer.removeFeatures([tempFeature]);
 	    //console.log("now doing the close popup and sending to server");
-	    map.removePopup(activePopup);
+		if(activePopup){
+			map.removePopup(activePopup);
+			activePopup = null;
+		}
+		
+	    
 	    now.serverAddFeature(encodedFeature, attributes); 
-	    activePopup = null
 	    tempFeature = null;
 	    return false;
 	  });
@@ -598,7 +609,7 @@ var menucontrol = function(){
 	   }
  		var newlayerinfo = "";
 
-	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[required]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Point<br/><input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Connection<br/><input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Polygon<br/><input type='submit' value='Next'></form>");
+	  $("#newLayerForm").html("<form action='#' id='newLayerForm1'>Layer Title<input name='layertitle' id='layertitle' class='validate[custom[onlyLetterNumber]]' type='text'/><input name='layertype' id='layertype' value='point' class='validate[required]' type='radio'/>Point<br/><input  id='layertype' name='layertype' class='validate[required]' value='connection' type='radio'/>Connection<br/><input  id='layertype' name='layertype' class='validate[required]' value='polygon' type='radio'/>Polygon<br/><input type='submit' value='Next'></form>");
           //$("#newLayerForm1").validationEngine("attach");
 		  
 	 
@@ -698,7 +709,7 @@ var appendLayerMenu = function(){
 		var theobj = $("<div>").attr('class','layerexpandmenu').html(thehtml).hide();
 		$(this).append(theobj);
 		if(activeDrawLayer){
-			console.log("checking " + activeControl.layer.name + " " + thelayer.name  + " and " + activeControl.CLASS_NAME);
+			//console.log("checking " + activeControl.layer.name + " " + thelayername  + " and " + activeControl.CLASS_NAME);
 			if (activeDrawLayer.name != thelayername ){ 
 				$(this).hover(function(){
 					var themenu = $(this).next();
