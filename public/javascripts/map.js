@@ -136,8 +136,7 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
         
         // if no baselayers, dont display the baselayer label
         this.baseLbl.style.display = (containsBaseLayers) ? "" : "none";        
-
-	appendLayerMenu();
+			appendLayerMenu();
         return this.div;
 
 
@@ -153,13 +152,13 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 //****************************STYLIZE FUNCTIONS ********************************************************
 
     
-    var stylize = function(){
+    var stylize = function(color, shape, layertype){
         
         var nodestylertemp = OpenLayers.Util.applyDefaults({
                  strokeWidth: 1.5,
-                 strokeColor: "${color}",
+                 strokeColor: "#2cc40e",
                  strokeOpacity:.9,
-                 fillColor: "${color}",
+                 fillColor: "#2cc40e",
                  fillOpacity: .4,
                  cursor: "pointer",
                  pointRadius: 7,
@@ -167,6 +166,7 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 					  //graphicName: "${graphic}",
 					  //label: "${thelabel}"
              }, OpenLayers.Feature.Vector.style['temporary']);
+			console.log(nodestylertemp['strokeWidth']);
         var nodestylerselect = OpenLayers.Util.applyDefaults({
                  strokeWidth: 1.5,
                  strokeColor: "#FAF334",
@@ -182,8 +182,8 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
                           
         var thestyle = new OpenLayers.Style({
                  strokeWidth: 1,
-                 strokeColor: "${color}",
-                 fillColor: "${color}",
+                 strokeColor: "#2cc40e",
+                 fillColor: "$#2cc40e",
                  strokeOpacity:1,
                  fillOpacity: .9,
                  cursor: "pointer",
@@ -192,6 +192,24 @@ OpenLayers.Control.LayerSwitcher.prototype.redraw = function(){
 					  //graphicName: "${graphic}",
 					  //label: "${thelabel}"
              });
+		if (layertype == "point"){
+			if (shape != 'none' && shape != null){
+				thestyle['defaultStyle']['graphicName'] = shape;
+				nodestylerselect['graphicName'] = shape;
+				nodestylertemp['graphicName'] = shape;
+			}
+			else {
+				thestyle['defaultStyle']['graphicName'] = 'circle';
+				nodestylerselect['graphicName'] = 'circle';
+				nodestylertemp['graphicName'] = 'circle';
+			}
+		}
+		thestyle['defaultStyle']['fillColor'] = color;
+		nodestylertemp['fillColor'] = color;
+		thestyle['defaultStyle']['strokeColor'] = color;
+		nodestylertemp['strokeColor'] = color;
+		console.log(thestyle);
+	
 
 
 
@@ -370,7 +388,6 @@ var clearActiveControls = function(){
 now.clientAddFeature = function(thejson){
   	if(Array.isArray(thejson)){
 		thelayer = null;
-		console.log("running the array version");
 		for(var x =0; x<thejson.length; x++){
 			
 			var thefeature = new OpenLayers.Format.GeoJSON().read(thejson[x], "Feature");
@@ -561,8 +578,8 @@ console.log("starting up the modify control");
   }
   map.addControl(activeControl);
   activeControl.activate();
-	appendLayerMenu();
-
+	//appendLayerMenu();
+	
 
 
 }
@@ -623,6 +640,7 @@ var menucontrol = function(){
 	 
 	}
 var appendLayerMenu = function(){
+/*
 	$(".dropdownmenu").remove();
 	$(".drawimage").remove();
   $(".dataLayersDiv").children(".labelSpan").each( function(){
@@ -667,7 +685,60 @@ var appendLayerMenu = function(){
 
 		clearDrawing();
 	});
+*/
+	//$(".layerexpandmenu").remove();
+	$(".dataLayersDiv").children(".labelSpan").each( function(){
+		//$(this).before("<span id='" + ident + "' class='dropdownmenu'></span>");
+		var thelayername = $(this).prev('input').val();
+		console.log(thelayername);
+      var thehtml = "<li><span class='layermenubutton' name='draw_" + thelayername + "'>Add</span></li><li><span class='layermenubutton' name='modify_" + thelayername + "'>Modify</span></li><li><span class='layermenubutton' name='erase_" + thelayername + "'>Erase</span></li>";
+		var theobj = $("<div>").attr('class','layerexpandmenu').html(thehtml).hide();
+		$(this).append(theobj);
+		if(activeDrawLayer){
+			console.log("checking " + activeControl.layer.name + " " + thelayer.name  + " and " + activeControl.CLASS_NAME);
+			if (activeDrawLayer.name != thelayername ){ 
+				$(this).hover(function(){
+					var themenu = $(this).next();
+							if (!themenu.hasClass("active")){
+								$(this).children().show();
+							}
+							
+						}, function(){
+							$(this).children().hide();
 
+						});
+			}
+			else{
+				$(this).children().show().prepend("Click to stop changing this layer");
+
+			}
+		}
+		else {
+			$(this).hover(function(){
+				var themenu = $(this).next();
+						if (!themenu.hasClass("active")){
+							$(this).children().show();
+						}
+						
+					}, function(){
+						$(this).children().hide();
+
+					});
+
+		}
+
+	});
+	$(".layermenubutton").click(function(event){
+		var ops = $(this).attr("name").split("_");
+		if( ops.length == 2){
+			startControl(ops[0], ops[1]);
+		}
+		else {
+			console.log("There was an error : " + $(this).attr("name"));
+		}
+		event.stopPropagation();
+
+	});
 
 
 }
@@ -735,7 +806,7 @@ now.clientCheckUser = function(bool, res, themessage){
 now.clientNewLayer = function(thejson){
 	var layerinfo = $.parseJSON(thejson);
 	//layers[thejson['layertitle']] = new OpenLayers.Layer.Vector(
-	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { styleMap: stylize(), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
+	var newlayer = new OpenLayers.Layer.Vector(layerinfo['layertitle'], { styleMap: stylize(layerinfo['color'], layerinfo['shape'], layerinfo['layertype']), visibility:true, projection:normalproj, strategies:[new OpenLayers.Strategy.BBOX()], 
 		protocol: new OpenLayers.Protocol({format: new OpenLayers.Format.GeoJSON()})});
    	newlayer['layertype'] = layerinfo['layertype'];
 		newlayer['layerid'] = layerinfo['layerid'];

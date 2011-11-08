@@ -188,14 +188,7 @@ var sendFeatures = function(theuserid, myconnection, therows){
 		var datasend = [];
 		for (var i =0;i< datarows.length;i++){
 			var newobj = JSON.parse(datarows[i]['data']);
-			newobj['properties']['shapeid'] = datarows[i]['shapeid'];
-			if(thesend['shape'] == 'none' && thesend['layertype']=='point'){
-				newobj['properties']['graphic'] = "circle";	
-			}
-			else{
-				newobj['properties']['graphic'] = thesend['shape'];	
-			}
-			newobj['properties']['color'] = thesend['color'];						
+			newobj['properties']['shapeid'] = datarows[i]['shapeid'];				
 			datasend.push(newobj);
 		}
 		theuserid.now.clientAddFeature(datasend);
