@@ -91,8 +91,8 @@ nowjs.on('disconnect', function(){
 
 nowjs.on('connect', function(){
 	console.log("heres the users cookie " + util.inspect(this.user.cookie));
-	console.log("here is some other stuff " + util.inspect(this.user));
-	//console.log("we were able tog et the mapid " + this.user.clientId);
+	//console.log("here is some other stuff " + util.inspect(this.user));
+	nowjs.getGroup(this.now.mapid).addUser(this.user.clientId);
 	//nowjs.getGroup(this.now.mapid).count(function(ct){
 	//	console.log("there are this many members in the group on coming here " + ct);
 	//});
@@ -104,7 +104,7 @@ nowjs.on('connect', function(){
 
 everyone.now.serverCheckUser = function(username, challenge, mapid){
 	var theuserid = this;
-	console.log("got my mapid: " + mapid);
+	//console.log("got my mapid: " + mapid);
 
 	try {
 		check(username).isAlphanumeric();
@@ -123,7 +123,7 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 		return;
 	}
 	//console.log("got through validation now we are runing queries");
-	console.log("ok at least hit the function");
+	//console.log("ok at least hit the function");
 	mydb.connect(function(error){ if(error) {console.log("there was a major error with mysql" + error);}
 		myconnection = this;
 		myconnection.query("SELECT uid FROM users WHERE username=? AND mapid=? LIMIT 1", [username, mapid]).execute(function(error,rows1){
@@ -136,11 +136,9 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 						
 							myconnection.query("UPDATE users SET login=UNIX_TIMESTAMP() WHERE uid=? AND mapid=?", [rows2[0]['uid'], mapid]).execute(function(error){if (error){console.log(error)}});
 							theuserid.now.mapid = mapid;
+							theuserid.now.username = username;
 							theuserid.now.clientCheckUser(true, rows2[0]['uid']);
-							nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
-							nowjs.getGroup(mapid).count(function(ct){
-								console.log("this makes this many in the group is " + ct);
-							});
+							nowjs.getGroup(mapid).now.recieveStatus(username, "is now editing the map");
 						}
 						else {
 							theuserid.now.clientCheckUser(false, 'newUserCheck', 'Either a user already has this user name or your password is in correct.  If you have signed in before with this user name please try to enter your street name again.');
@@ -152,12 +150,10 @@ everyone.now.serverCheckUser = function(username, challenge, mapid){
 							myconnection.query("SELECT MAX(uid) as maxuserid FROM users").execute(function(error, rows3){
 								if (error){console.log(error)}
 								theuserid.now.mapid = mapid;
-								console.log("stopping here");
+								theuserid.now.username = username;
+								//console.log("stopping here");
 								theuserid.now.clientCheckUser(true, rows3[0]['maxuserid']);
-								nowjs.getGroup(mapid).addUser(theuserid.user.clientId);
-								nowjs.getGroup(mapid).count(function(ct){
-									console.log("this makes this many in the group is " + ct);
-								});
+								nowjs.getGroup(mapid).now.recieveStatus(username, "is now editing the map");
 							});
 						
 					});
@@ -256,6 +252,7 @@ everyone.now.serverNewLayer = function(thequerystring){
 				}
 				sendback = {'layerid':thelayerid, 'layertitle': queryobj['layertitle'], 'layertype':queryobj['layertype'], 'shape':queryobj['shape'], 'color': queryobj['picker']};
 				nowjs.getGroup(theuserid.now.mapid).now.clientNewLayer(JSON.stringify(sendback));
+				nowjs.getGroup(theuserid.now.mapid).now.recieveStatus(username, "has added a new layer " + sendback['layertitle']);
 			});
 		});
 	}); 
@@ -277,8 +274,8 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 		theconnection.query(query1, [geoparse['properties']['layer'], theuserid.now.mapid]).execute(function(theerror, rows){
 			if(theerror || !(rows.length > 0)){console.log(theerror);}
 			//console.log(util.inspect(rows));
-			console.log(util.inspect(rows));
-			console.log("here is the layer id " + rows[0]['layerid']);
+			//console.log(util.inspect(rows));
+			//console.log("here is the layer id " + rows[0]['layerid']);
 			
 			var thelayerid = rows[0]['layerid'];
 			var thecolor = rows[0]['color'];
@@ -301,6 +298,7 @@ everyone.now.serverAddFeature = function(thejson, attributes){
 						}
 						geoparse['properties']['color'] = thecolor;
 					nowjs.getGroup(theuserid.now.mapid).now.clientAddFeature(geoparse);
+					nowjs.getGroup(theuserid.now.mapid).now.recieveStatus(theuserid.now.username, "has added a feature to " + geoparse['properties']['layer']);
 				
 //starting the attributes of the data
 					console.log("here are the attributes " + attributes);
@@ -348,6 +346,8 @@ everyone.now.serverDeleteFeature = function(delobj){
 		myconnection.query("DELETE FROM mapdata WHERE shapeid=?", [shapeid]).execute(function(error){if(error){console.log(error);}});
 		myconnection.query("DELETE FROM mapattdata WHERE shapeid=?", [shapeid]).execute(function(error){if(error){console.log(error);}});
 		nowjs.getGroup(theuserid.now.mapid).now.clientDeleteFeature(delobj);
+		nowjs.getGroup(theuserid.now.mapid).now.recieveStatus(theuserid.now.username, "has deleted a feature from " + geoparse['properties']['layer']);
+		
 	});
 }
 everyone.now.serverModifyFeature = function(thejson){
@@ -370,6 +370,7 @@ everyone.now.serverModifyFeature = function(thejson){
 		});
 
 		nowjs.getGroup(theuserid.now.mapid).now.clientModifyFeature(featureobj);
+		nowjs.getGroup(theuserid.now.mapid).now.recieveStatus(theuserid.now.username, "has modified a feature in " + featureobj['properties']['layer']);
 	});
 }
 

@@ -75,5 +75,10 @@ body {
 	display:block;
 }
 
+#statuswindow {
+	overflow-y: scroll;
+	max-height: 110px;
+	
+}
 
 

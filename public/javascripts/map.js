@@ -840,7 +840,7 @@ now.clientNewLayer = function(thejson){
 
 
 $(document).ready(function(){ 
-
+	now.mapid = window.location.pathname.split('/')[1];
 
   var thediv = $("<div>").attr('id', "newUserForm").html("<form id='newNameForm'>Please enter your name: <input name='newNameFormUsername' id='newNameFormUsername' class='validate[required]' type='text'/><br/>Enter the name of the street you grew up on: <input name='newUserCheck' id='newUserCheck' class='validate[required]' type='text'/><input type='submit' id='usersubmit' value='Log in'></form>");
   $("#popupholder").append(thediv);
@@ -937,15 +937,15 @@ var searchByAddress = function(e){
 		//$("#addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' type='text'/><br/>City: <input name='searchCity' id='searchCity' type='text'/><br/>State: <input name='searchState' id='searchState' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' type='text'/><input type='submit' value='Search'><input type='reset' value='Clear Form' /><br/></form><div id='addressSearchResults'>Results go here</div>");
 	}
 	else{
-	  var thediv = $("<div>").attr('id', "addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' type='text'/><br/>City: <input name='searchCity' id='searchCity' type='text'/><br/>State: <input name='searchState' id='searchState' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' type='text'/><br/><input type='submit' value='Search'><input type='reset' value='Reset' /></form><br/><div id='addressSearchResults'>Results go here</div>");
+	  var thediv = $("<div>").attr('id', "addressSearchPopup").html("<form action='#' id='addressSearchForm'>Street Address: <input name='searchAddress' id='searchAddress' type='text'/><br/>City: <input name='searchCity' id='searchCity' type='text'/><br/>State: <input name='searchState' id='searchState' type='text'/><br/>Zip Code: <input name='searchZipcode' id='searchZipcode' type='text'/><br/><input type='submit' value='Search'><input type='reset' value='Reset' /></form><br/><div id='addressSearchResults'></div>");
 	  $("#popupholder").append(thediv);
 	}
   $("#addressSearchPopup").dialog({autoOpen:true, title:"Address Search"});
 	$("#searchbyaddress").addClass("active")
   $("#addressSearchForm").submit(function(){
-    if ($(this).validationEngine("validate") == false){
-      return false;
-    }
+    //if ($(this).validationEngine("validate") == false){
+    //  return false;
+    //}
 	 var theurl = "http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Locators/ESRI_Geocode_USA/GeocodeServer/findAddressCandidates?Address=" + $("#searchAddress").val() + "&City=" + $("#searchCity").val() + "&State=" + $("#searchState").val()+ "&Zip=" + $("#searchZipcode").val() + "&outFields=&f=json";
 	console.log(theurl);
     $.ajax({
@@ -985,6 +985,12 @@ var jsonpCallback = function(data){
 		var thehtml = "<a href='javascript:addressSearchPanto(" + data.candidates[x]['location']['x'] + "," + data.candidates[x]['location']['y'] + ");'>" + data.candidates[x]['address'] + "</a><br/>";
 		$("#addressSearchResults").append(thehtml);
 	}
+}
+
+now.recieveStatus = function(username, themessage){
+	$("#statuswindow").prepend("<span class='statusMessage'><strong>" + username + "</strong> " + themessage +"</span><br/>");
+
+
 }
 
 
@@ -1037,6 +1043,8 @@ var initfunction =function(){
    $("#bottomwrapper").dialog({autoOpen:true, position:['center', 'bottom'], resizable:false, title:"Time Scale"});
    
    setupDateSlider();
+	$("#timeScaleMenu").click();
+	
 
 	var statusdiv = $("<div>").attr('id', 'statuswindow').html("<div id='statuswindowContent'></div>");
    $("#popupholder").append(statusdiv);
